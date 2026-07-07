@@ -179,6 +179,23 @@ if (hasDbConfig) {
         console.log(`[Database Seed] Default API Key seeded for ${email}.`);
       }
 
+      // Migration: For any existing API Keys where key_value is NULL,
+      // generate a new API key so the user can show/hide and copy it.
+      const [nullKeys] = await pool.query("SELECT id FROM api_keys WHERE key_value IS NULL");
+      if (nullKeys.length > 0) {
+        console.log(`[Database Migration] Found ${nullKeys.length} API keys without plain-text values. Regenerating...`);
+        for (const k of nullKeys) {
+          const randomKey = 'key_' + crypto.randomBytes(16).toString('hex');
+          const keyHash = crypto.createHash('sha256').update(randomKey).digest('hex');
+          const keyPreview = randomKey.substring(0, 8) + '...' + randomKey.substring(randomKey.length - 4);
+          await pool.query(
+            "UPDATE api_keys SET key_hash = ?, key_preview = ?, key_value = ? WHERE id = ?",
+            [keyHash, keyPreview, randomKey, k.id]
+          );
+        }
+        console.log("[Database Migration] All old API keys upgraded successfully.");
+      }
+
     } catch (err) {
       console.warn('Database connection failed. Continuing in offline/no-db mode. Reason:', err.message);
       pool = null;
