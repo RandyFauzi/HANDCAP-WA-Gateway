@@ -2269,19 +2269,23 @@ print(response.json())`;
     }
 
     let revealedApiKeys = new Set();
-    function toggleApiKeyVisibility(keyId, keyValue) {
+    function toggleApiKeyVisibility(keyId) {
       const keySpan = document.getElementById(`key-val-${keyId}`);
       const btn = document.getElementById(`key-toggle-btn-${keyId}`);
       if (!keySpan || !btn) return;
 
-      if (revealedApiKeys.has(keyId)) {
-        revealedApiKeys.delete(keyId);
-        keySpan.innerText = '••••••••••••••••••••••••••••••••';
-        btn.innerText = 'Tampilkan';
+      const isHidden = keySpan.innerText.includes('•');
+      const fullKey = keySpan.getAttribute('data-full-key');
+      const previewKey = keySpan.getAttribute('data-preview');
+      
+      if (isHidden) {
+        keySpan.innerText = fullKey;
+        // Switch to Eye Off icon
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
       } else {
-        revealedApiKeys.add(keyId);
-        keySpan.innerText = keyValue;
-        btn.innerText = 'Sembunyikan';
+        keySpan.innerText = '••••••••••••••••••••••••••••••••';
+        // Switch to Eye Open icon
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
       }
     }
 
@@ -2315,22 +2319,27 @@ print(response.json())`;
           day: '2-digit', month: 'short', year: 'numeric'
         });
 
-        // If the preview contains no ellipsis, it means the full key is visible (e.g. Default API Key)
-        const isFullKeyAvailable = !k.key_preview.includes('...');
+        // Fallback to key_preview if key_value is not stored (for very old keys)
+        const actualKey = k.key_value || k.key_preview || '';
+        const isOldHashedKey = !k.key_value && k.key_preview.includes('...');
 
         tr.innerHTML = `
           <td style="font-weight: 700; color: var(--text-title); text-align: left;">
             ${escapeHtml(k.name)}
           </td>
           <td style="font-family: monospace; font-size: 0.8rem; text-align: left;">
-            <span id="key-val-${k.id}">${escapeHtml(k.key_preview)}</span>
-            <div style="display:inline-flex; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle;">
-              ${isFullKeyAvailable ? `
-                <button class="btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="copyApiKeyToClipboard('${escapeHtml(k.key_preview)}')">
+            <span id="key-val-${k.id}" data-full-key="${escapeHtml(actualKey)}" data-preview="${escapeHtml(k.key_preview)}">••••••••••••••••••••••••••••••••</span>
+            <div style="display:inline-flex; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle; align-items: center;">
+              ${isOldHashedKey ? `
+                <span style="color: var(--text-muted); font-size: 0.7rem; font-style: italic;">(Hanya preview: ${escapeHtml(k.key_preview)})</span>
+              ` : `
+                <button class="btn-secondary" id="key-toggle-btn-${k.id}" style="padding: 0.15rem 0.35rem; font-size: 0.7rem; border-radius: 4px; display: inline-flex; align-items: center;" onclick="toggleApiKeyVisibility(${k.id})">
+                  <!-- Eye Open Icon (Lucide Eye) -->
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+                <button class="btn-secondary" style="padding: 0.15rem 0.35rem; font-size: 0.7rem; border-radius: 4px; display: inline-flex; align-items: center;" onclick="copyApiKeyToClipboard('${escapeHtml(actualKey)}')">
                   Salin
                 </button>
-              ` : `
-                <span style="color: var(--text-muted); font-size: 0.7rem; font-style: italic;">(Hanya dapat disalin saat pertama kali dibuat)</span>
               `}
             </div>
           </td>
