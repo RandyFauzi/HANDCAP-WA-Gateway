@@ -87,11 +87,23 @@ if (hasDbConfig) {
           user_id INT NOT NULL,
           key_hash VARCHAR(100) UNIQUE,
           key_preview VARCHAR(100),
+          key_value VARCHAR(100),
           name VARCHAR(100) NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      // Migration: Add key_value column if it doesn't exist
+      try {
+        const [cols] = await pool.query("SHOW COLUMNS FROM api_keys LIKE 'key_value'");
+        if (cols.length === 0) {
+          await pool.query("ALTER TABLE api_keys ADD COLUMN key_value VARCHAR(100) NULL AFTER key_preview");
+          console.log("Migration: Added key_value column to api_keys table.");
+        }
+      } catch (err) {
+        console.warn("Migration warning: failed to check/add key_value column:", err.message);
+      }
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS sent_messages (
@@ -161,10 +173,27 @@ if (hasDbConfig) {
         const defaultApiKey = 'supersecretapikey';
         const defaultHash = crypto.createHash('sha256').update(defaultApiKey).digest('hex');
         await pool.query(
-          'INSERT INTO api_keys (user_id, key_hash, key_preview, name) VALUES (?, ?, ?, ?)',
-          [userId, defaultHash, defaultApiKey, 'Default API Key']
+          'INSERT INTO api_keys (user_id, key_hash, key_preview, key_value, name) VALUES (?, ?, ?, ?, ?)',
+          [userId, defaultHash, defaultApiKey, defaultApiKey, 'Default API Key']
         );
         console.log(`[Database Seed] Default API Key seeded for ${email}.`);
+      }
+
+      // Migration: For any existing API Keys where key_value is NULL,
+      // generate a new API key so the user can show/hide and copy it.
+      const [nullKeys] = await pool.query("SELECT id FROM api_keys WHERE key_value IS NULL");
+      if (nullKeys.length > 0) {
+        console.log(`[Database Migration] Found ${nullKeys.length} API keys without plain-text values. Regenerating...`);
+        for (const k of nullKeys) {
+          const randomKey = 'key_' + crypto.randomBytes(16).toString('hex');
+          const keyHash = crypto.createHash('sha256').update(randomKey).digest('hex');
+          const keyPreview = randomKey.substring(0, 8) + '...' + randomKey.substring(randomKey.length - 4);
+          await pool.query(
+            "UPDATE api_keys SET key_hash = ?, key_preview = ?, key_value = ? WHERE id = ?",
+            [keyHash, keyPreview, randomKey, k.id]
+          );
+        }
+        console.log("[Database Migration] All old API keys upgraded successfully.");
       }
 
     } catch (err) {
@@ -613,12 +642,12 @@ async function getApiKeys(userId) {
   if (!pool || !isConnected) {
     return memoryApiKeys.filter(k => k.user_id === uid).map(k => ({
       id: k.id, user_id: k.user_id, name: k.name,
-      key_preview: k.key_preview, created_at: k.created_at
+      key_preview: k.key_preview, key_value: k.key_value, created_at: k.created_at
     }));
   }
   try {
     const [rows] = await pool.query(
-      'SELECT id, name, key_preview, created_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC',
+      'SELECT id, name, key_preview, key_value, created_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC',
       [uid]
     );
     return rows;
@@ -628,12 +657,12 @@ async function getApiKeys(userId) {
   }
 }
 
-async function createApiKey(userId, name, keyHash, keyPreview) {
+async function createApiKey(userId, name, keyHash, keyPreview, keyValue = null) {
   const uid = parseInt(userId);
   if (!pool || !isConnected) {
     const key = {
       id: memoryApiKeys.length + 1, user_id: uid,
-      key_hash: keyHash, key_preview: keyPreview,
+      key_hash: keyHash, key_preview: keyPreview, key_value: keyValue,
       name, created_at: new Date()
     };
     memoryApiKeys.push(key);
@@ -641,10 +670,10 @@ async function createApiKey(userId, name, keyHash, keyPreview) {
   }
   try {
     await pool.query(
-      'INSERT INTO api_keys (user_id, name, key_hash, key_preview) VALUES (?, ?, ?, ?)',
-      [uid, name, keyHash, keyPreview]
+      'INSERT INTO api_keys (user_id, name, key_hash, key_preview, key_value) VALUES (?, ?, ?, ?, ?)',
+      [uid, name, keyHash, keyPreview, keyValue]
     );
-    const [rows] = await pool.query('SELECT id, name, key_preview, created_at FROM api_keys WHERE key_hash = ?', [keyHash]);
+    const [rows] = await pool.query('SELECT id, name, key_preview, key_value, created_at FROM api_keys WHERE key_hash = ?', [keyHash]);
     return rows[0];
   } catch (err) {
     console.error('Failed to create API key:', err.message);
