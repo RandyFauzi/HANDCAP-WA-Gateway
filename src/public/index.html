@@ -1246,6 +1246,94 @@
       }
     }
 
+    // Function to dynamically update URLs in the code documentation based on current host
+    function updateDynamicUrls() {
+      const origin = window.location.origin;
+      
+      // Update main display URL
+      const mainUrlEl = document.getElementById('doc-api-url');
+      if (mainUrlEl) mainUrlEl.innerText = `${origin}/api/v1/send-message`;
+      
+      // Update curl code
+      const curlEl = document.getElementById('curl-code');
+      if (curlEl) {
+        curlEl.innerHTML = `curl -X POST ${origin}/api/v1/send-message \\
+  -H "Authorization: Bearer supersecretapikey" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "phone": "62895366583095",
+    "message": "Halo! Kode OTP keamanan Anda adalah: 8842",
+    "session": "default",
+    "priority": "high"
+  }'`;
+      }
+
+      // Update laravel code
+      const laravelEl = document.getElementById('laravel-code');
+      if (laravelEl) {
+        laravelEl.innerHTML = `use Illuminate\\Support\\Facades\\Http;
+
+$response = Http::withHeaders([
+    'Authorization' => 'Bearer supersecretapikey',
+    'Content-Type' => 'application/json'
+])->post('${origin}/api/v1/send-message', [
+    'phone' => '62895366583095',
+    'message' => 'Halo! Kode OTP keamanan Anda adalah: 8842',
+    'session' => 'default',
+    'priority' => 'high' // 'high' mempercepat antrean (Instant OTP)
+]);
+
+if ($response->successful()) {
+    $data = $response->json();
+    // Berhasil diproses
+}`;
+      }
+
+      // Update nodejs code
+      const nodejsEl = document.getElementById('nodejs-code');
+      if (nodejsEl) {
+        nodejsEl.innerHTML = `const apiKey = 'supersecretapikey';
+
+fetch('${origin}/api/v1/send-message', {
+  method: 'POST',
+  headers: {
+    'Authorization': \`Bearer \\\${apiKey}\`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    phone: '62895366583095',
+    message: 'Halo! Kode OTP keamanan Anda adalah: 8842',
+    session: 'default',
+    priority: 'high'
+  })
+})
+.then(res => res.json())
+.then(data => console.log('Response:', data))
+.catch(err => console.error('Error:', err));`;
+      }
+
+      // Update python code
+      const pythonEl = document.getElementById('python-code');
+      if (pythonEl) {
+        pythonEl.innerHTML = `import requests
+
+url = "${origin}/api/v1/send-message"
+headers = {
+    "Authorization": "Bearer supersecretapikey",
+    "Content-Type": "application/json"
+}
+payload = {
+    "phone": "62895366583095",
+    "message": "Halo! Kode OTP keamanan Anda adalah: 8842",
+    "session": "default",
+    "priority": "high"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())`;
+      }
+    }
+
     // Collapsible Sidebar Handler
     function toggleSidebar() {
       const sidebar = document.getElementById('app-sidebar');
