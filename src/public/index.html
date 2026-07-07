@@ -1201,6 +1201,11 @@
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const html = await res.text();
           document.getElementById(id).innerHTML = html;
+          
+          // If the documentation tab was just loaded, trigger the URL initialization function
+          if (id === 'tab-docs' && typeof updateDynamicUrls === 'function') {
+            updateDynamicUrls();
+          }
         } catch (err) {
           console.error(`Gagal memuat partial ${url}:`, err);
           document.getElementById(id).innerHTML = `
