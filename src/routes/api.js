@@ -530,7 +530,7 @@ router.post('/auth/register', async (req, res) => {
     const defaultKey = 'key_' + crypto.randomBytes(16).toString('hex');
     const keyHash = crypto.createHash('sha256').update(defaultKey).digest('hex');
     const keyPreview = defaultKey.substring(0, 8) + '...' + defaultKey.substring(defaultKey.length - 4);
-    await db.createApiKey(user.id, 'Default API Key', keyHash, keyPreview, defaultKey);
+    await db.createApiKey(user.id, 'Default API Key', keyHash, keyPreview);
 
     return res.status(200).json({
       status: 'success',
@@ -699,7 +699,7 @@ router.post('/admin/users', authenticate, isAdmin, async (req, res) => {
     const defaultKey = 'key_' + crypto.randomBytes(16).toString('hex');
     const keyHash = crypto.createHash('sha256').update(defaultKey).digest('hex');
     const keyPreview = defaultKey.substring(0, 8) + '...' + defaultKey.substring(defaultKey.length - 4);
-    await db.createApiKey(user.id, 'Default API Key', keyHash, keyPreview, defaultKey);
+    await db.createApiKey(user.id, 'Default API Key', keyHash, keyPreview);
 
     return res.status(200).json({
       status: 'success',
@@ -804,7 +804,7 @@ router.post('/api-keys', authenticate, async (req, res) => {
     const randomKey = 'key_' + crypto.randomBytes(16).toString('hex');
     const keyHash = crypto.createHash('sha256').update(randomKey).digest('hex');
     const keyPreview = randomKey.substring(0, 8) + '...' + randomKey.substring(randomKey.length - 4);
-    const newKey = await db.createApiKey(req.user.id, name, keyHash, keyPreview, randomKey);
+    const newKey = await db.createApiKey(req.user.id, name, keyHash, keyPreview);
     return res.status(200).json({
       status: 'success',
       message: 'API Key generated successfully.',
