@@ -217,9 +217,23 @@
         }).join('');
       } else {
         showToast('Gagal', res.message || 'Gagal mengambil data pengguna.', 'error');
+        listContainer.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 3rem 0; color: var(--danger);">
+              Gagal memuat pengguna: ${escapeHtml(res.message || 'Unknown error')}
+            </td>
+          </tr>
+        `;
       }
     } catch (err) {
       showToast('Error', 'Kesalahan koneksi ke server gateway.', 'error');
+      listContainer.innerHTML = `
+        <tr>
+          <td colspan="4" style="text-align: center; padding: 3rem 0; color: var(--danger);">
+            Kesalahan koneksi ke server gateway.
+          </td>
+        </tr>
+      `;
     }
   }
 
