@@ -2227,19 +2227,23 @@
           day: '2-digit', month: 'short', year: 'numeric'
         });
 
+        // If the preview contains no ellipsis, it means the full key is visible (e.g. Default API Key)
+        const isFullKeyAvailable = !k.key_preview.includes('...');
+
         tr.innerHTML = `
           <td style="font-weight: 700; color: var(--text-title); text-align: left;">
             ${escapeHtml(k.name)}
           </td>
           <td style="font-family: monospace; font-size: 0.8rem; text-align: left;">
-            <span id="key-val-${k.id}">••••••••••••••••••••••••••••••••</span>
+            <span id="key-val-${k.id}">${escapeHtml(k.key_preview)}</span>
             <div style="display:inline-flex; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle;">
-              <button class="btn-secondary" id="key-toggle-btn-${k.id}" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="toggleApiKeyVisibility(${k.id}, '${k.key_value}')">
-                Tampilkan
-              </button>
-              <button class="btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="copyApiKeyToClipboard('${k.key_value}')">
-                Salin
-              </button>
+              ${isFullKeyAvailable ? `
+                <button class="btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="copyApiKeyToClipboard('${escapeHtml(k.key_preview)}')">
+                  Salin
+                </button>
+              ` : `
+                <span style="color: var(--text-muted); font-size: 0.7rem; font-style: italic;">(Hanya dapat disalin saat pertama kali dibuat)</span>
+              `}
             </div>
           </td>
           <td>
