@@ -1196,7 +1196,8 @@
     async function loadPartials() {
       const promises = Object.entries(PARTIALS).map(async ([id, url]) => {
         try {
-          const res = await fetch(url);
+          // Append a cache-buster query parameter to ensure we load fresh files
+          const res = await fetch(`${url}?_t=${Date.now()}`);
           if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
           const html = await res.text();
           document.getElementById(id).innerHTML = html;
