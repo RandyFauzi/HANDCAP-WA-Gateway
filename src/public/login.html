@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login - HANDCAP WhatsApp Gateway Console</title>
+  
+  <!-- Plus Jakarta Sans & Hanken Grotesk Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Hanken+Grotesk:wght@600;700;800&family=Inter:wght@400;500;600&family=Geist:wght@500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- GSAP Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    :root {
+      /* Light Mode Palette (Default) */
+      --bg-body: radial-gradient(circle at 50% 50%, #f8fafc 0%, #cbd5e1 100%);
+      --bg-card: rgba(255, 255, 255, 0.55);
+      --border-color: rgba(226, 232, 240, 0.9);
+      --text-main: #1e293b;
+      --text-title: #0f172a;
+      --text-muted: #64748b;
+      --input-bg: rgba(241, 245, 249, 0.6);
+      --input-focus-bg: #ffffff;
+      --card-border: rgba(255, 255, 255, 0.55);
+      --shadow-color: rgba(15, 23, 42, 0.05);
+      
+      --primary: #234cf0;
+      --primary-hover: #1b3ecf;
+      --primary-light: #eff6ff;
+      --danger-bg: rgba(15, 23, 42, 0.98);
+      --danger-border: #f4fe00;
+      --danger-text: #f4fe00;
+      
+      --radius-lg: 20px;
+      --radius-md: 12px;
+      --shadow-lg: 0 25px 50px -12px var(--shadow-color), 0 0 0 1px rgba(0, 0, 0, 0.01);
+      --transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+      
+      /* Vibrant Glow Spots Light */
+      --glow-1: rgba(35, 76, 240, 0.12);
+      --glow-2: rgba(236, 72, 153, 0.1);
+      --glow-3: rgba(245, 158, 11, 0.06);
+      --glow-mouse: rgba(35, 76, 240, 0.08);
+    }
+
+    body.dark-mode {
+      /* Dark Mode Palette (Stitch Colors) */
+      --bg-body: radial-gradient(circle at 50% 50%, #0b1326 0%, #060e20 100%);
+      --bg-card: rgba(23, 31, 51, 0.7);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-main: #dae2fd;
+      --text-title: #bac3ff;
+      --text-muted: #c4c5d9;
+      --input-bg: #060e20;
+      --input-focus-bg: #131b2e;
+      --card-border: rgba(255, 255, 255, 0.1);
+      --shadow-color: rgba(35, 76, 240, 0.15);
+      
+      --primary: #234cf0;
+      --primary-hover: #3b82f6;
+      --primary-light: rgba(35, 76, 240, 0.15);
+      --danger-bg: rgba(15, 23, 42, 0.98);
+      --danger-border: #f4fe00;
+      --danger-text: #f4fe00;
+      
+      --shadow-lg: 0 25px 50px -12px var(--shadow-color), 0 0 0 1px rgba(255, 255, 255, 0.05);
+
+      /* Vibrant Glow Spots Dark */
+      --glow-1: rgba(35, 76, 240, 0.18);
+      --glow-2: rgba(139, 92, 246, 0.15);
+      --glow-3: rgba(6, 182, 212, 0.12);
+      --glow-mouse: rgba(99, 102, 241, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background: var(--bg-body);
+      color: var(--text-main);
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      transition: background 0.5s ease;
+      overflow: hidden; /* Prevent scrolling completely to fit 1 page */
+    }
+
+    @media (max-height: 640px) {
+      body {
+        align-items: flex-start;
+        overflow-y: auto;
+        padding: 1.5rem 1rem;
+      }
+    }
+
+    /* Background dynamic fluid blobs with vibrant but thin gradients */
+    .blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(90px);
+      z-index: 0;
+      pointer-events: none;
+      opacity: 0.7;
+    }
+    
+    .blob-1 {
+      top: -10%;
+      left: -10%;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, var(--glow-1) 0%, rgba(35, 76, 240, 0) 70%);
+    }
+    
+    .blob-2 {
+      bottom: -15%;
+      right: -10%;
+      width: 550px;
+      height: 550px;
+      background: radial-gradient(circle, var(--glow-2) 0%, rgba(139, 92, 246, 0) 70%);
+    }
+    
+    .blob-3 {
+      top: 30%;
+      right: 20%;
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, var(--glow-3) 0%, rgba(6, 182, 212, 0) 70%);
+    }
+
+    /* Interactive Cursor Spotlight Follower */
+    .cursor-glow {
+      position: fixed;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--glow-mouse) 0%, rgba(99, 102, 241, 0) 70%);
+      pointer-events: none;
+      z-index: 1;
+      transform: translate(-50%, -50%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Noise Overlay from Stitch */
+    .noise-overlay {
+      position: fixed;
+      inset: 0;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 2;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Grid Overlay */
+    .grid-overlay {
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(rgba(148, 163, 184, 0.04) 1px, transparent 1px);
+      background-size: 24px 24px;
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    body.dark-mode .grid-overlay {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    }
+
+    /* Theme Toggle Button */
+    .theme-toggle-btn {
+      position: absolute;
+      top: 1.25rem;
+      right: 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-title);
+      box-shadow: var(--shadow-lg);
+      transition: var(--transition);
+      z-index: 100;
+    }
+    
+    .theme-toggle-btn:hover {
+      transform: scale(1.08) rotate(15deg);
+      background: var(--input-focus-bg);
+      border-color: var(--primary);
+    }
+
+    .theme-toggle-btn i {
+      width: 18px;
+      height: 18px;
+    }
+
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: clamp(0.75rem, 2vh, 1.25rem);
+      z-index: 10;
+    }
+
+    .login-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-lg);
+      padding: clamp(1.25rem, 3.5vh, 2rem) clamp(1.5rem, 4vh, 2.25rem);
+      display: flex;
+      flex-direction: column;
+      gap: clamp(0.6rem, 1.8vh, 1rem);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      position: relative;
+    }
+
+    .login-card:hover {
+      border-color: rgba(35, 76, 240, 0.3);
+    }
+
+    .brand-section {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: clamp(0.2rem, 0.6vh, 0.35rem);
+      margin-bottom: 0.05rem;
+    }
+
+    .brand-logo {
+      width: clamp(32px, 5.5vh, 44px);
+      height: clamp(32px, 5.5vh, 44px);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #234cf0, #4f46e5);
+      box-shadow: 0 6px 16px -4px rgba(35, 76, 240, 0.3);
+      margin-bottom: 0.05rem;
+    }
+
+    .brand-logo svg {
+      width: 55%;
+      height: 55%;
+    }
+
+    .brand-logo svg circle {
+      stroke: #ffffff;
+    }
+    
+    .brand-logo svg path {
+      fill: #ffffff;
+    }
+
+    .brand-text {
+      font-family: 'Hanken Grotesk', sans-serif;
+      font-size: clamp(1.2rem, 3vh, 1.45rem);
+      font-weight: 800;
+      color: var(--text-title);
+      letter-spacing: -0.75px;
+      line-height: 1.1;
+    }
+
+    .brand-tagline {
+      font-size: clamp(0.725rem, 1.8vh, 0.8rem);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Alert Container styled via GSAP - starts collapsed */
+    .alert {
+      display: none;
+      opacity: 0;
+      height: 0;
+      overflow: hidden;
+      padding: 0;
+      margin-bottom: 0;
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.4;
+      align-items: center;
+      gap: 0.65rem;
+      transition: var(--transition);
+      box-sizing: border-box;
+    }
+
+    .alert-danger {
+      background-color: var(--danger-bg);
+      border: 1.5px solid var(--danger-border);
+      color: var(--danger-text);
+      box-shadow: 0 8px 20px -5px rgba(244, 254, 0, 0.2);
+    }
+
+    .form-group {
+      position: relative;
+      margin-bottom: clamp(0.45rem, 1.5vh, 0.75rem);
+    }
+
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .input-icon {
+      position: absolute;
+      left: 1.15rem;
+      color: var(--text-muted);
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+      transition: var(--transition);
+      z-index: 2;
+    }
+
+    input {
+      background-color: var(--input-bg);
+      border: 1.5px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: clamp(0.75rem, 2vh, 0.95rem) 1rem clamp(0.75rem, 2vh, 0.95rem) 2.85rem;
+      color: var(--text-main);
+      font-size: 0.875rem;
+      font-weight: 500;
+      outline: none;
+      transition: var(--transition);
+      width: 100%;
+    }
+
+    /* Focus and auto-fill states */
+    input:focus {
+      background-color: var(--input-focus-bg);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(35, 76, 240, 0.1);
+    }
+
+    .input-wrapper:focus-within .input-icon {
+      color: var(--primary);
+    }
+
+    /* Floating Label Styling */
+    .input-wrapper label {
+      position: absolute;
+      left: 2.85rem;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 0.875rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      transition: var(--transition);
+      font-weight: 500;
+      z-index: 1;
+    }
+
+    /* Raise label when input has text or is focused */
+    input:focus ~ label,
+    input:not(:placeholder-shown) ~ label {
+      top: 0.35rem;
+      transform: translateY(0) scale(0.75);
+      transform-origin: left top;
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    /* Slide padding to leave room for label */
+    input:focus,
+    input:not(:placeholder-shown) {
+      padding-top: clamp(1.2rem, 3vh, 1.35rem);
+      padding-bottom: clamp(0.3rem, 1vh, 0.4rem);
+    }
+
+    .password-toggle-btn {
+      position: absolute;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0.4rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: var(--transition);
+      z-index: 2;
+    }
+
+    .password-toggle-btn:hover {
+      color: var(--primary);
+      background-color: var(--primary-light);
+    }
+
+    .password-toggle-btn i {
+      width: 16px;
+      height: 16px;
+    }
+
+    /* Remember me & Forgot password row */
+    .form-options-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .remember-me-container {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      user-select: none;
+    }
+
+    .remember-me-container input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    .forgot-password-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .forgot-password-link:hover {
+      color: var(--primary-hover);
+      text-decoration: underline;
+    }
+
+    button[type="submit"] {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: var(--radius-md);
+      padding: clamp(0.75rem, 1.8vh, 0.85rem) 1.25rem;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      width: 100%;
+      box-shadow: 0 4px 12px rgba(35, 76, 240, 0.22);
+      margin-top: 0.05rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    button[type="submit"]::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    button[type="submit"]:hover {
+      background-color: var(--primary-hover);
+      box-shadow: 0 6px 18px rgba(35, 76, 240, 0.3);
+      transform: translateY(-1px);
+    }
+
+    button[type="submit"]:hover::after {
+      opacity: 1;
+    }
+
+    button[type="submit"]:active {
+      transform: translateY(1px);
+    }
+
+    /* Divider */
+    .divider-container {
+      position: relative;
+      text-align: center;
+      margin: clamp(0.3rem, 1.2vh, 0.5rem) 0;
+    }
+
+    .divider-line {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background-color: var(--border-color);
+      opacity: 0.5;
+      z-index: 1;
+    }
+
+    .divider-text {
+      position: relative;
+      background-color: #f1f5f9; /* Light BG default */
+      padding: 0 0.65rem;
+      font-size: 0.725rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      z-index: 2;
+    }
+
+    body.dark-mode .divider-text {
+      background-color: #111827;
+    }
+
+    /* Social Google Button */
+    .social-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.55rem;
+      width: 100%;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: clamp(0.6rem, 1.5vh, 0.7rem) 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.825rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    body.dark-mode .social-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .social-btn:hover {
+      background: #f8fafc;
+      border-color: var(--primary);
+    }
+
+    body.dark-mode .social-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .social-btn img {
+      width: 16px;
+      height: 16px;
+    }
+
+    button:disabled {
+      background-color: #cbd5e1 !important;
+      color: #94a3b8 !important;
+      cursor: not-allowed;
+      box-shadow: none !important;
+      transform: none !important;
+    }
+
+    body.dark-mode button:disabled {
+      background-color: #334155 !important;
+      color: #64748b !important;
+    }
+
+    .footer-text {
+      text-align: center;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      margin-top: clamp(0.05rem, 0.5vh, 0.15rem);
+    }
+
+    .footer-text a {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 700;
+      position: relative;
+      transition: var(--transition);
+    }
+
+    .footer-text a::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 0;
+      width: 100%;
+      height: 1.5px;
+      background-color: var(--primary);
+      transform: scaleX(0);
+      transform-origin: right;
+      transition: transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    .footer-text a:hover {
+      color: var(--primary-hover);
+    }
+
+    .footer-text a:hover::after {
+      transform: scaleX(1);
+      transform-origin: left;
+    }
+
+    .spinner {
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border-left-color: white;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body> <!-- Defaults to Light Mode as per user request -->
+
+  <!-- Interactive cursor glow & background elements -->
+  <div class="cursor-glow" id="cursor-glow"></div>
+  <div class="noise-overlay"></div>
+  <div class="grid-overlay"></div>
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+
+  <!-- Theme Toggle -->
+  <button id="theme-toggle" class="theme-toggle-btn" aria-label="Toggle Theme">
+    <i data-lucide="moon" id="theme-icon"></i>
+  </button>
+
+  <div class="login-container">
+    <div class="login-card">
+      
+      <!-- Brand Logo & Header -->
+      <div class="brand-section">
+        <div class="brand-logo">
+          <svg viewBox="0 0 100 100" width="28" height="28">
+            <circle cx="50" cy="50" r="40" fill="none" stroke-width="8"/>
+            <circle cx="42" cy="40" r="6" />
+            <path d="M 60 55 C 65 55, 75 62, 78 60 C 80 58, 80 42, 78 40 C 75 38, 65 45, 60 45 Z" />
+          </svg>
+        </div>
+        <h2 class="brand-text">HANDCAP</h2>
+        <p class="brand-tagline">Solusi Gateway API WhatsApp Profesional</p>
+      </div>
+
+      <!-- Alert Box -->
+      <div class="alert alert-danger" id="alert-box">
+        <i data-lucide="alert-triangle" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+        <span id="alert-text">Email atau password salah.</span>
+      </div>
+
+      <!-- Form Section -->
+      <form id="login-form">
+        <div class="form-group">
+          <div class="input-wrapper">
+            <i data-lucide="mail" class="input-icon"></i>
+            <input type="email" id="email" required autocomplete="username" placeholder=" ">
+            <label for="email">Email Pengguna</label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <div class="input-wrapper">
+            <i data-lucide="lock" class="input-icon"></i>
+            <input type="password" id="password" required autocomplete="current-password" placeholder=" ">
+            <label for="password">Kata Sandi</label>
+            <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" aria-label="Toggle password visibility">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Options row -->
+        <div class="form-options-row">
+          <label class="remember-me-container" for="remember">
+            <input type="checkbox" id="remember">
+            <span>Ingat saya untuk 30 hari</span>
+          </label>
+          <a href="#" class="forgot-password-link" onclick="alert('Fitur pemulihan sandi sedang dalam pengembangan.')">Lupa sandi?</a>
+        </div>
+
+        <button type="submit" id="btn-submit">
+          <span>Masuk ke Dashboard</span>
+          <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="divider-container">
+        <div class="divider-line"></div>
+        <span class="divider-text">Atau gunakan</span>
+      </div>
+
+      <!-- Social login button (visual ornament) -->
+      <button type="button" class="social-btn" onclick="alert('Masuk Google sedang dalam pengembangan.')">
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ523FgJW1F6IQRSisQdyN2ybgmZ2mvGqaWDoPDyLqwoRX04V-vRC1zWWcTmcUVs6o32cHsoH55s1Tjf0beQ5CO7bE1g0vj4h7Mz_Zc10NLguddT4T3pvEdlzhiXYRisYU9Y1f-NzvubULBJzztJ_XpDTHNxQEiv01cSDeowG15E-M2IgsRkZca_CMstq1XuUj7FQWlDEgaFvp1lCf8nTbvo3GzznbSFhmEC2wH69msEb8FMsAe6_o-YDOo2g6j-cFGd3y6kCj" alt="Google Logo">
+        <span>Lanjutkan dengan Google</span>
+      </button>
+
+      <!-- Footer Action -->
+      <p class="footer-text">
+        Belum punya akun? <a href="/register.html">Daftar di sini</a>
+      </p>
+
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Check if user is already logged in
+    if (localStorage.getItem('handcap_token')) {
+      window.location.href = '/index.html';
+    }
+
+    const form = document.getElementById('login-form');
+    const alertBox = document.getElementById('alert-box');
+    const alertText = document.getElementById('alert-text');
+    const btnSubmit = document.getElementById('btn-submit');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
+    const glow = document.getElementById('cursor-glow');
+
+    // Theme Switcher Logic - Defaults to Light Mode
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+      document.body.classList.add('dark-mode');
+      themeIcon.setAttribute('data-lucide', 'sun');
+      lucide.createIcons();
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('dark-mode');
+      const isDark = document.body.classList.contains('dark-mode');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      
+      // Animate icon swap
+      gsap.fromTo(themeToggleBtn, { rotate: 0 }, { rotate: 360, duration: 0.5, ease: 'back.out(1.5)' });
+      themeIcon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      lucide.createIcons();
+    });
+
+    // Smooth Cursor Glowing Spotlight Follower using GSAP
+    document.addEventListener('mousemove', (e) => {
+      gsap.to(glow, {
+        x: e.clientX,
+        y: e.clientY,
+        duration: 0.8,
+        ease: 'power2.out'
+      });
+      if (window.getComputedStyle(glow).opacity === '0') {
+        gsap.to(glow, { opacity: 1, duration: 0.4 });
+      }
+    });
+
+    document.addEventListener('mouseleave', () => {
+      gsap.to(glow, { opacity: 0, duration: 0.4 });
+    });
+
+    // Organic background blob floating movement using GSAP
+    gsap.to('.blob-1', {
+      x: 'random(-50, 50)',
+      y: 'random(-50, 50)',
+      scale: 'random(0.9, 1.15)',
+      duration: 12,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut'
+    });
+    gsap.to('.blob-2', {
+      x: 'random(-60, 60)',
+      y: 'random(-60, 60)',
+      scale: 'random(0.85, 1.15)',
+      duration: 15,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut',
+      delay: 1
+    });
+    gsap.to('.blob-3', {
+      x: 'random(-40, 40)',
+      y: 'random(-40, 40)',
+      scale: 'random(0.9, 1.1)',
+      duration: 10,
+      repeat: -1,
+      yoyo: true,
+      ease: 'sine.inOut',
+      delay: 2
+    });
+
+    // Entrance Staggered Animations using GSAP
+    gsap.from('.login-card', {
+      opacity: 0,
+      y: 30,
+      scale: 0.97,
+      duration: 1.0,
+      ease: 'power3.out'
+    });
+
+    gsap.from('.brand-section, .form-group, .form-options-row, button[type="submit"], .divider-container, .social-btn, .footer-text', {
+      opacity: 0,
+      y: 10,
+      duration: 0.6,
+      stagger: 0.05,
+      ease: 'power2.out',
+      delay: 0.1
+    });
+
+    // Show/Hide Password Toggle Helper
+    function togglePasswordVisibility(inputId, btn) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const icon = btn.querySelector('i');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.setAttribute('data-lucide', 'eye-off');
+      } else {
+        input.type = 'password';
+        icon.setAttribute('data-lucide', 'eye');
+      }
+      lucide.createIcons();
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      // Close error banner cleanly
+      hideAlert();
+      btnSubmit.disabled = true;
+      btnSubmit.innerHTML = '<div class="spinner"></div> <span>Memproses...</span>';
+
+      try {
+        const response = await fetch('/api/v1/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+
+        const res = await response.json();
+        
+        if (response.ok && res.status === 'success') {
+          // Store token & user credentials
+          localStorage.setItem('handcap_token', res.data.token);
+          localStorage.setItem('handcap_user_email', res.data.user.email);
+          
+          // Animate success checkout transition
+          gsap.to('.login-card', {
+            opacity: 0,
+            scale: 0.95,
+            y: -20,
+            duration: 0.5,
+            ease: 'power2.in',
+            onComplete: () => {
+              window.location.href = '/index.html';
+            }
+          });
+        } else {
+          showError(res.message || 'Gagal masuk. Periksa kembali email dan password Anda.');
+        }
+      } catch (err) {
+        showError('Kesalahan jaringan. Gagal menghubungi server gateway.');
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = '<span>Masuk ke Dashboard</span> <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>';
+        lucide.createIcons();
+      }
+    });
+
+    function showError(message) {
+      alertText.innerText = message;
+      alertBox.style.display = 'flex';
+      
+      // Animate error slide down
+      gsap.fromTo(alertBox, 
+        { height: 0, opacity: 0, padding: '0px 1rem' },
+        { height: 'auto', opacity: 1, padding: '0.85rem 1rem', duration: 0.4, ease: 'power3.out' }
+      );
+      
+      // Elastic shake
+      gsap.fromTo(alertBox, { x: -8 }, { x: 0, duration: 0.6, ease: 'elastic.out(2.5, 0.2)' });
+    }
+
+    function hideAlert() {
+      if (alertBox.style.display === 'flex') {
+        gsap.to(alertBox, {
+          height: 0,
+          opacity: 0,
+          padding: '0px 1rem',
+          duration: 0.2,
+          ease: 'power2.in',
+          onComplete: () => {
+            alertBox.style.display = 'none';
+          }
+        });
+      }
+    }
+  </script>
+</body>
+</html>

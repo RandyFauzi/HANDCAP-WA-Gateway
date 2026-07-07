@@ -1,0 +1,2757 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HANDCAP - Corporate WhatsApp Gateway Console</title>
+  
+  <!-- Plus Jakarta Sans Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Socket.io & QRCode CDN -->
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- GSAP Animation Library (used by admin modals) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <style>
+    /* Styling Tokens - Premium Light SaaS Console */
+    :root {
+      --bg-slate: #f8fafc;
+      --bg-card: #ffffff;
+      --sidebar-bg: #ffffff;
+      --sidebar-text: #64748b;
+      --sidebar-hover-bg: #eff6ff;
+      --sidebar-active-bg: #f1f5f9;
+      --sidebar-active-color: #0f172a;
+      --border-color: #e2e8f0;
+      --text-main: #1e293b;
+      --text-title: #0f172a;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #10b981;
+      --success-light: #ecfdf5;
+      --success-border: #a7f3d0;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --warning-border: #fde68a;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --danger-border: #fecaca;
+      
+      --radius-lg: 12px;
+      --radius-md: 8px;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.03), 0 2px 4px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.03);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-slate);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar Layout */
+    .sidebar {
+      width: 260px;
+      background-color: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border-color);
+      flex-shrink: 0;
+      z-index: 100;
+      transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+    }
+
+    .sidebar.collapsed {
+      width: 80px;
+    }
+
+    .sidebar-brand {
+      padding: 1.5rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      overflow: hidden;
+      white-space: nowrap;
+      height: 75px;
+    }
+
+    .brand-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: margin 0.3s ease;
+    }
+
+    .brand-text {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--text-title);
+      letter-spacing: -0.5px;
+      transition: opacity 0.2s ease;
+      opacity: 1;
+    }
+
+    .sidebar.collapsed .brand-text {
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+    }
+
+    .sidebar-menu {
+      padding: 1.5rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.8rem 1rem;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+      border: 1px solid transparent;
+    }
+
+    .menu-item:hover {
+      background-color: var(--sidebar-hover-bg);
+      color: var(--primary);
+    }
+
+    .menu-item.active {
+      background-color: var(--sidebar-active-bg);
+      color: var(--sidebar-active-color);
+      font-weight: 700;
+      border-color: #cbd5e1;
+    }
+
+    .menu-item svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      flex-shrink: 0;
+      transition: margin 0.3s ease;
+    }
+
+    .menu-item.active svg {
+      stroke: var(--primary);
+    }
+
+    .menu-text {
+      transition: opacity 0.2s ease;
+      opacity: 1;
+    }
+
+    .sidebar.collapsed .menu-text {
+      opacity: 0;
+      pointer-events: none;
+      width: 0;
+      height: 0;
+      overflow: hidden;
+    }
+
+    /* Collapsed Tooltips */
+    .sidebar.collapsed .menu-item {
+      position: relative;
+      justify-content: center;
+      padding: 0.8rem;
+    }
+
+    .sidebar.collapsed .menu-item::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 85px;
+      top: 50%;
+      transform: translateY(-50%) translateX(-10px);
+      background-color: var(--text-title);
+      color: #ffffff;
+      padding: 0.4rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.15s ease;
+      box-shadow: var(--shadow-md);
+      z-index: 200;
+    }
+
+    .sidebar.collapsed .menu-item:hover::after {
+      opacity: 1;
+      transform: translateY(-50%) translateX(0);
+    }
+
+    /* Dividers inside menu */
+    .sidebar-divider {
+      height: 1px;
+      background-color: var(--border-color);
+      margin: 0.75rem 0.5rem;
+      transition: margin 0.3s ease;
+    }
+
+    .sidebar.collapsed .sidebar-divider {
+      margin: 0.75rem 0.25rem;
+    }
+
+    .sidebar-footer {
+      padding: 1.25rem;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      border-top: 1px solid var(--border-color);
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: padding 0.3s ease;
+    }
+
+    .sidebar.collapsed .sidebar-footer {
+      padding: 1.25rem 0.25rem;
+      font-size: 0.65rem;
+    }
+
+    /* Collapsed Toggle Button */
+    .sidebar-toggle-btn {
+      position: absolute;
+      top: 25px;
+      right: -12px;
+      width: 24px;
+      height: 24px;
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      z-index: 105;
+      transition: var(--transition);
+      color: #64748b;
+    }
+
+    .sidebar-toggle-btn:hover {
+      background-color: var(--sidebar-hover-bg);
+      color: var(--primary);
+    }
+
+    .sidebar-toggle-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      transition: transform 0.3s ease;
+    }
+
+    .sidebar.collapsed .sidebar-toggle-btn svg {
+      transform: rotate(180deg);
+    }
+
+    /* Main Content Area */
+    .content-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Top Navbar */
+    .navbar {
+      background-color: var(--bg-card);
+      border-bottom: 1px solid var(--border-color);
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .nav-title {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-title);
+    }
+
+    .server-status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background-color: #f1f5f9;
+      border: 1px solid var(--border-color);
+      padding: 0.4rem 0.85rem;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      background-color: var(--success);
+      border-radius: 50%;
+    }
+
+    /* Content Panels */
+    .main-content {
+      padding: 2.5rem;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.25s ease-out;
+    }
+
+    .tab-content.active {
+      display: flex;
+      flex-direction: column;
+      gap: 2rem;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* SaaS Metric Cards Row */
+    .metrics-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .metric-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .metric-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .metric-icon.indigo { background-color: #e0e7ff; color: #4f46e5; }
+    .metric-icon.green { background-color: #d1fae5; color: #059669; }
+    .metric-icon.amber { background-color: #fef3c7; color: #d97706; }
+    .metric-icon.rose { background-color: #ffe4e6; color: #e11d48; }
+
+    .metric-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: currentColor;
+    }
+
+    .metric-details {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .metric-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text-title);
+      line-height: 1.2;
+    }
+
+    .metric-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    /* Core Panel Card */
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-title);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title svg {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-muted);
+    }
+
+    .card-body {
+      padding: 1.75rem;
+    }
+
+    /* Onboarding Card */
+    .onboarding-box {
+      background: linear-gradient(135deg, #4f46e5, #3730a3);
+      color: #ffffff;
+      padding: 1.75rem;
+      border-radius: var(--radius-lg);
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-md);
+    }
+
+    .onboarding-box::after {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%);
+      border-radius: 50%;
+    }
+
+    .onboarding-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    .onboarding-desc {
+      font-size: 0.85rem;
+      opacity: 0.85;
+      max-width: 700px;
+      margin-bottom: 1.25rem;
+    }
+
+    .onboarding-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .onboarding-step {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      padding: 0.85rem;
+      font-size: 0.8rem;
+    }
+
+    .step-badge {
+      background-color: rgba(255, 255, 255, 0.2);
+      color: white;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.7rem;
+      margin-bottom: 0.4rem;
+      display: inline-block;
+    }
+
+    /* WhatsApp Connections Screen */
+    .add-session-area {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.75rem;
+      background-color: var(--bg-slate);
+      padding: 1.25rem;
+      border-radius: var(--radius-md);
+      border: 1px dashed var(--border-color);
+      margin-bottom: 1.5rem;
+    }
+
+    .sessions-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .session-card {
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background-color: var(--bg-card);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: var(--transition);
+    }
+
+    .session-card:hover {
+      box-shadow: var(--shadow-md);
+      border-color: #cbd5e1;
+    }
+
+    .session-card-header {
+      padding: 1rem 1.25rem;
+      background-color: var(--bg-slate);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .session-card-body {
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      text-align: center;
+      flex: 1;
+    }
+
+    .session-card-footer {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.5rem;
+      background-color: var(--bg-slate);
+    }
+
+    /* QR Area & Badges */
+    .qr-box {
+      border: 1px solid var(--border-color);
+      padding: 0.75rem;
+      border-radius: 8px;
+      background: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.25rem 0.55rem;
+      border-radius: 99px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.2px;
+    }
+
+    .badge-success { background-color: var(--success-light); color: var(--success); border: 1px solid var(--success-border); }
+    .badge-success::before { content: ''; width: 5px; height: 5px; background: var(--success); border-radius: 50%; }
+    
+    .badge-warning { background-color: var(--warning-light); color: var(--warning); border: 1px solid var(--warning-border); }
+    .badge-warning::before { content: ''; width: 5px; height: 5px; background: var(--warning); border-radius: 50%; animation: pulse 1.5s infinite; }
+    
+    .badge-info { background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+    .badge-danger { background-color: var(--danger-light); color: var(--danger); border: 1px solid var(--danger-border); }
+
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+
+    /* Forms */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    @media (max-width: 576px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-title);
+    }
+
+    .desc {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: -0.15rem;
+    }
+
+    input, select, textarea {
+      background-color: var(--bg-slate);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      padding: 0.65rem 0.85rem;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      outline: none;
+      transition: var(--transition);
+    }
+
+    input:focus, select:focus, textarea:focus {
+      background-color: #ffffff;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    /* Buttons */
+    button {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 0.65rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    button:hover { background-color: var(--primary-hover); }
+    button:active { transform: translateY(1px); }
+    button:disabled { background-color: #cbd5e1; color: #94a3b8; cursor: not-allowed; transform: none; }
+
+    .btn-secondary { background-color: #f1f5f9; border: 1px solid var(--border-color); color: var(--text-main); }
+    .btn-secondary:hover { background-color: #e2e8f0; border-color: #cbd5e1; }
+    
+    .btn-danger { background-color: transparent; border: 1px solid var(--danger-border); color: var(--danger); }
+    .btn-danger:hover { background-color: var(--danger-light); }
+
+    /* Console Logger */
+    .console-box {
+      background-color: #0f172a;
+      border: 1px solid #1e293b;
+      border-radius: 8px;
+      padding: 1rem;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.8rem;
+      color: #38bdf8;
+      max-height: 180px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .console-box.success { color: #34d399; border-color: rgba(16, 185, 129, 0.2); }
+    .console-box.error { color: #f87171; border-color: rgba(239, 68, 68, 0.2); }
+
+    /* Code Blocks & Copy */
+    .code-widget {
+      position: relative;
+      border-radius: 8px;
+      background-color: #0f172a;
+      overflow: hidden;
+      margin-top: 0.5rem;
+    }
+
+    .code-header {
+      background-color: #1e293b;
+      padding: 0.5rem 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: #94a3b8;
+      font-weight: 600;
+    }
+
+    .btn-copy {
+      background: transparent;
+      color: #38bdf8;
+      border: none;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .btn-copy:hover { background: rgba(56, 189, 248, 0.1); }
+
+    .code-body {
+      padding: 1rem;
+      color: #f8fafc;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.75rem;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Toasts */
+    #toast-container {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      z-index: 10000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .toast {
+      background: white;
+      border: 1px solid var(--border-color);
+      border-left: 4px solid var(--primary);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      padding: 0.75rem 1.25rem;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transform: translateX(120%);
+      transition: var(--transition);
+      max-width: 320px;
+    }
+
+    .toast.show { transform: translateX(0); }
+    .toast-success { border-left-color: var(--success); }
+    .toast-error { border-left-color: var(--danger); }
+
+    .toast-title { font-weight: 700; font-size: 0.8rem; color: var(--text-title); }
+    .toast-text { font-size: 0.75rem; color: var(--text-muted); }
+
+    .spinner {
+      border: 2px solid rgba(0, 0, 0, 0.1);
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Campaign Broadcast Styling */
+    .progress-bar-container {
+      width: 100%;
+      background-color: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+      height: 8px;
+      position: relative;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background-color: var(--primary);
+      width: 0%;
+      transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .progress-bar-fill.success {
+      background-color: var(--success);
+    }
+    
+    .progress-bar-fill.danger {
+      background-color: var(--danger);
+    }
+    
+    .progress-text {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    
+    /* Modal Styling */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .modal-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      width: 90%;
+      max-width: 700px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    .modal-backdrop.active .modal-card {
+      transform: scale(1);
+    }
+    
+    .modal-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .modal-body {
+      padding: 1.75rem;
+      overflow-y: auto;
+      flex: 1;
+    }
+    
+    .modal-footer {
+      padding: 1rem 1.75rem;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: flex-end;
+      background-color: var(--bg-slate);
+      border-bottom-left-radius: var(--radius-lg);
+      border-bottom-right-radius: var(--radius-lg);
+    }
+
+    /* Table styles for Broadcasts */
+    .premium-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.85rem;
+    }
+
+    .premium-table th {
+      padding: 1rem 1.25rem;
+      font-weight: 700;
+      color: var(--text-title);
+      border-bottom: 2px solid var(--border-color);
+      background-color: var(--bg-slate);
+    }
+
+    .premium-table td {
+      padding: 1rem 1.25rem;
+      color: var(--text-main);
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .premium-table tr:hover {
+      background-color: #f8fafc;
+    }
+
+    /* Live Chat Console custom styling */
+    .chat-thread-card {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      transition: var(--transition);
+      background: transparent;
+      border-left: 4px solid transparent;
+    }
+    .chat-thread-card:hover {
+      background-color: var(--bg-slate);
+    }
+    .chat-thread-card.active {
+      background-color: var(--primary-light) !important;
+      border-left-color: var(--primary) !important;
+    }
+    #chat-messages-feed::-webkit-scrollbar,
+    #chat-threads-list::-webkit-scrollbar {
+      width: 6px;
+    }
+    #chat-messages-feed::-webkit-scrollbar-track,
+    #chat-threads-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    #chat-messages-feed::-webkit-scrollbar-thumb,
+    #chat-threads-list::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar" id="app-sidebar">
+    <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 20px; height: 20px;"></div></div>
+  </aside>
+
+  <!-- RIGHT WRAPPER -->
+  <div class="content-wrapper">
+    
+    <!-- NAVBAR -->
+    <header class="navbar">
+      <div class="nav-title" id="nav-current-title">Overview Dashboard</div>
+      
+      <div class="server-status">
+        <div class="status-dot"></div>
+        <span id="gateway-status-label">Server Active</span>
+      </div>
+    </header>
+
+    <!-- MAIN CONTENT SCROLL AREA -->
+    <main class="main-content">
+      <div class="tab-content active" id="tab-overview">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-connections">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-chat">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-broadcasts">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-sandbox">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-docs">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-settings">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+      <div class="tab-content" id="tab-users">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
+    </main>
+
+  </div>
+
+  <!-- CAMPAIGN DETAIL MODAL -->
+  <div class="modal-backdrop" id="campaign-detail-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 class="card-title" id="modal-campaign-title">Detail Kampanye Broadcast</h3>
+        <button class="btn-secondary" onclick="closeCampaignModal()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; background: transparent; border: none; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1.25rem;">
+        <!-- Campaign Summary Info -->
+        <div style="background-color: var(--bg-slate); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; font-size: 0.85rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div><strong>Sesi Pengirim:</strong> <span id="modal-info-sender">-</span></div>
+          <div><strong>Total Kontak:</strong> <span id="modal-info-total">-</span></div>
+          <div><strong>Sukses Dikirim:</strong> <span id="modal-info-success" style="color:var(--success); font-weight:700;">-</span></div>
+          <div><strong>Gagal Dikirim:</strong> <span id="modal-info-failed" style="color:var(--danger); font-weight:700;">-</span></div>
+          <div style="grid-column: 1 / -1; margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem;">
+            <strong>Isi Pesan:</strong>
+            <p id="modal-info-message" style="margin-top: 0.25rem; font-size: 0.8rem; color: var(--text-muted); background: white; padding: 0.75rem; border: 1px solid var(--border-color); border-radius: 4px; white-space: pre-wrap; max-height: 100px; overflow-y: auto; text-align: left;"></p>
+          </div>
+        </div>
+
+        <!-- Recipient Logs Table -->
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <label style="font-weight:700; text-align: left; font-size: 0.85rem;">Log Status Pengiriman Kontak:</label>
+          <div style="border:1px solid var(--border-color); border-radius: var(--radius-md); max-height: 250px; overflow-y: auto;">
+            <table class="premium-table" style="font-size:0.8rem;">
+              <thead style="position: sticky; top: 0; z-index: 10;">
+                <tr>
+                  <th style="padding: 0.5rem 1rem;">No. Telepon</th>
+                  <th style="padding: 0.5rem 1rem;">Status</th>
+                  <th style="padding: 0.5rem 1rem;">Pesan Error / Waktu</th>
+                </tr>
+              </thead>
+              <tbody id="modal-recipients-list">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" onclick="closeCampaignModal()">Tutup Detail</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEW CHAT MODAL -->
+  <div class="modal-backdrop" id="new-chat-modal">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h3 class="card-title">Mulai Chat Baru</h3>
+        <button class="btn-secondary" onclick="closeNewChatModal()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; background: transparent; border: none; cursor: pointer;">✕</button>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem; text-align: left;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="new-chat-phone">Nomor Telepon WhatsApp</label>
+          <div class="desc" style="margin-bottom: 0.25rem;">Masukkan nomor tujuan (contoh: 08123456789 atau 628123456789)</div>
+          <input type="text" id="new-chat-phone" placeholder="Masukkan nomor telepon..." style="width: 100%;">
+        </div>
+      </div>
+      <div class="modal-footer" style="gap: 0.5rem;">
+        <button class="btn-secondary" onclick="closeNewChatModal()">Batal</button>
+        <button id="btn-submit-new-chat" style="background-color: var(--primary);">Buka Obrolan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- API KEY REVEAL MODAL -->
+  <div class="modal-backdrop" id="reveal-key-modal">
+    <div class="modal-card" style="max-width: 460px;">
+      <div class="modal-header">
+        <h3 class="card-title" style="color: var(--primary);">API Key Baru Berhasil Dibuat</h3>
+      </div>
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem; text-align: left;">
+        <!-- Alert Warning -->
+        <div style="background-color: #fef3c7; border: 1px solid #fcd34d; border-radius: var(--radius-md); padding: 1rem; display: flex; gap: 0.75rem; color: #92400e;">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" style="flex-shrink:0;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+          <div style="font-size: 0.8rem; line-height: 1.4;">
+            <strong style="display:block; margin-bottom:0.15rem; font-weight:700;">Simpan Kunci Ini Sekarang!</strong>
+            Demi alasan keamanan, Anda hanya dapat melihat kunci ini **sekali saja**. Setelah Anda menutup dialog ini, kunci tidak akan bisa ditampilkan kembali.
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="revealed-api-key-val">Nilai Token API Key</label>
+          <div style="display:flex; gap:0.5rem; margin-top: 0.25rem;">
+            <input type="text" id="revealed-api-key-val" readonly style="font-family: monospace; font-size: 0.85rem; background: var(--bg-slate); border: 1px solid var(--border-color); width: 100%;">
+            <button class="btn-secondary" onclick="copyRevealedApiKey()" style="padding: 0.75rem 1rem; font-size: 0.8rem; font-weight: 600; white-space: nowrap;">
+              Salin Key
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content: flex-end;">
+        <button onclick="closeRevealKeyModal()" style="background-color: var(--primary); font-weight:700; padding: 0.75rem 1.5rem;">
+          Saya Sudah Menyimpan Key Ini
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container"></div>
+
+  <!-- JAVASCRIPT CONTROL LOGIC -->
+  <script>
+    // Redirect if not authenticated
+    const tokenVal = localStorage.getItem('handcap_token');
+    if (!tokenVal) {
+      window.location.href = '/login.html';
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('handcap_token');
+      localStorage.removeItem('handcap_user_email');
+      window.location.href = '/login.html';
+    }
+
+    async function apiFetch(url, options = {}) {
+      const token = localStorage.getItem('handcap_token');
+      if (!token) {
+        logoutUser();
+        throw new Error('No session token found. Redirecting to login...');
+      }
+
+      options.headers = options.headers || {};
+      if (!options.headers['Authorization']) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      try {
+        const response = await fetch(url, options);
+        if (response.status === 401) {
+          showToast('Sesi Berakhir', 'Sesi login Anda tidak valid atau telah kedaluwarsa.', 'error');
+          setTimeout(logoutUser, 1500);
+          throw new Error('Session unauthorized. Redirecting to login...');
+        }
+        return response;
+      } catch (err) {
+        if (!err.message.includes('Redirecting to login')) {
+          console.error(`apiFetch error for ${url}:`, err);
+        }
+        throw err;
+      }
+    }
+
+    // Global variable references
+    let socket;
+    let activeSessionsList = [];
+    
+    let sessionsContainer;
+    let newSessionNameInput;
+    let btnCreateSession;
+    
+    let sandboxSessionSelect;
+    let sandboxPhoneInput;
+    let sandboxApiKeyInput;
+    let sandboxMessageInput;
+    let btnSendMessage;
+    let responseConsole;
+
+    // Live Chat global states
+    let activeChatPhone = null;
+    let activeChatSession = 'default';
+
+    let chatSessionSelect;
+    let chatSearchInput;
+    let chatThreadsList;
+    let chatActiveHeader;
+    let chatMessagesFeed;
+    let chatTypingStatus;
+    let chatInputContainer;
+    let chatMessageTextarea;
+    let btnChatSend;
+
+    // Mulai Chat Baru modal variables
+    let newChatModal;
+    let newChatPhoneInput;
+
+    // Partials definition
+    const PARTIALS = {
+      'app-sidebar': '/partials/sidebar.html',
+      'tab-overview': '/partials/overview.html',
+      'tab-connections': '/partials/connections.html',
+      'tab-chat': '/partials/chat.html',
+      'tab-broadcasts': '/partials/broadcasts.html',
+      'tab-sandbox': '/partials/sandbox.html',
+      'tab-docs': '/partials/docs.html',
+      'tab-settings': '/partials/settings.html',
+      'tab-users': '/partials/users.html'
+    };
+
+    // Asynchronously load all partial contents
+    async function loadPartials() {
+      const promises = Object.entries(PARTIALS).map(async ([id, url]) => {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+          const html = await res.text();
+          document.getElementById(id).innerHTML = html;
+        } catch (err) {
+          console.error(`Gagal memuat partial ${url}:`, err);
+          document.getElementById(id).innerHTML = `
+            <div style="padding: 4rem 2rem; text-align: center; color: var(--danger);">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor" style="margin-bottom:0.5rem; display: inline-block;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <p style="font-weight:700;">Gagal Memuat Halaman</p>
+              <p style="font-size:0.8rem; color:var(--text-muted); margin-top:0.25rem;">${err.message}</p>
+            </div>
+          `;
+        }
+      });
+      await Promise.all(promises);
+    }
+
+    // Function to switch tabs in documentation page
+    function switchDocTab(lang) {
+      // Hide all code blocks
+      const blocks = document.querySelectorAll('.doc-code-block');
+      blocks.forEach(b => b.style.display = 'none');
+      
+      // Show active code block
+      const target = document.getElementById(`doc-content-${lang}`);
+      if (target) target.style.display = 'block';
+
+      // Update tab button classes
+      const buttons = document.querySelectorAll('.btn-doc-tab');
+      buttons.forEach(btn => {
+        btn.style.color = 'var(--text-muted)';
+        btn.style.borderBottomColor = 'transparent';
+        btn.classList.remove('active');
+      });
+
+      const activeBtn = document.getElementById(`tab-btn-${lang}`);
+      if (activeBtn) {
+        activeBtn.style.color = 'var(--primary)';
+        activeBtn.style.borderBottomColor = 'var(--primary)';
+        activeBtn.classList.add('active');
+      }
+    }
+
+    // Collapsible Sidebar Handler
+    function toggleSidebar() {
+      const sidebar = document.getElementById('app-sidebar');
+      const toggleBtn = document.getElementById('sidebar-toggle');
+      if (!sidebar || !toggleBtn) return;
+      
+      sidebar.classList.toggle('collapsed');
+      
+      // Update toggle icon direction and store state
+      if (sidebar.classList.contains('collapsed')) {
+        toggleBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+        localStorage.setItem('sidebar-collapsed', 'true');
+      } else {
+        toggleBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"></polyline></svg>';
+        localStorage.setItem('sidebar-collapsed', 'false');
+      }
+    }
+
+    // Tab switcher
+    function switchTab(tabId, menuItemElement) {
+      // Hide all tabs
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => tab.classList.remove('active'));
+
+      // Show targeted tab
+      const targetTab = document.getElementById(tabId);
+      if (targetTab) targetTab.classList.add('active');
+
+      // Update sidebar active menu class
+      const menuItems = document.querySelectorAll('.sidebar-menu .menu-item');
+      menuItems.forEach(item => item.classList.remove('active'));
+      menuItemElement.classList.add('active');
+
+      // Update Top Nav Title
+      const titleLabel = document.getElementById('nav-current-title');
+      if (titleLabel) titleLabel.innerText = menuItemElement.innerText.trim();
+
+      // Trigger chat load when entering chat tab
+      if (tabId === 'tab-chat') {
+        loadChats();
+      }
+
+      // Trigger settings load when entering settings tab
+      if (tabId === 'tab-settings') {
+        loadSettingsProfile();
+        loadUserApiKeys();
+      }
+
+      // Trigger admin users load when entering admin users tab
+      if (tabId === 'tab-users') {
+        if (typeof loadAdminUsers === 'function') loadAdminUsers();
+      }
+
+      // Trigger overview refresh when returning to dashboard
+      if (tabId === 'tab-overview') {
+        if (typeof loadOverviewCampaigns === 'function') loadOverviewCampaigns();
+        checkSystemStats();
+      }
+    }
+
+    // Helper to escape HTML characters
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // Toast notification utility
+    function showToast(title, text, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast toast-${type}`;
+      
+      let icon = '';
+      if (type === 'success') {
+        icon = `<svg fill="var(--success)" width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
+      } else if (type === 'error') {
+        icon = `<svg fill="var(--danger)" width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>`;
+      } else {
+        icon = `<svg fill="var(--primary)" width="16" height="16" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 16h-2v-6h2v6zm0-8h-2V7h2v3z"/></svg>`;
+      }
+
+      toast.innerHTML = `
+        <div class="toast-icon">${icon}</div>
+        <div>
+          <div class="toast-title">${title}</div>
+          <div class="toast-text">${text}</div>
+        </div>
+      `;
+      
+      container.appendChild(toast);
+      
+      // Trigger sliding transition
+      setTimeout(() => toast.classList.add('show'), 10);
+      
+      // Auto-remove after 4 seconds
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Toggle show API key in settings
+    function toggleSettingsApiKey() {
+      const input = document.getElementById('settings-api-key');
+      if (!input) return;
+      const btn = input.nextElementSibling;
+      if (input.type === 'password') {
+        input.type = 'text';
+        if (btn) btn.innerText = 'Sembunyikan Key';
+      } else {
+        input.type = 'password';
+        if (btn) btn.innerText = 'Tampilkan Key';
+      }
+    }
+
+    // Copy to clipboard utility
+    function copyToClipboard(elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const text = el.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        showToast('Salin Sukses', 'Kode snippet berhasil disalin ke clipboard!', 'success');
+      }).catch(err => {
+        showToast('Salin Gagal', 'Gagal menyalin kode.', 'error');
+      });
+    }
+
+    // Connect trigger
+    function initSession(id) {
+      if (socket) {
+        socket.emit('init-session', { sessionId: id });
+        showToast('Sistem', `Menghubungkan sesi: ${id}`, 'info');
+      }
+    }
+
+    // Disconnect trigger
+    function deleteSession(id) {
+      if (confirm(`Apakah Anda yakin ingin memutuskan koneksi sesi "${id}"? Data kredensial lokal akan dibersihkan dari server.`)) {
+        if (socket) {
+          socket.emit('delete-session', { sessionId: id });
+          showToast('Sistem', `Memutus koneksi sesi: ${id}`, 'info');
+        }
+      }
+    }
+
+    // Render active sessions to grid
+    function renderSessions() {
+      if (!sessionsContainer) return;
+      sessionsContainer.innerHTML = '';
+      
+      if (activeSessionsList.length === 0) {
+        sessionsContainer.innerHTML = `
+          <div class="connection-placeholder" style="grid-column:1/-1; padding: 3rem 0; width:100%;">
+            <svg viewBox="0 0 24 24" style="width: 38px; height: 38px; fill: var(--text-muted); display: inline-block;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/></svg>
+            <p style="font-size: 0.85rem; font-weight: 600; margin-top:0.5rem; color:var(--text-title);">Belum ada akun terdaftar.</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted); text-align: center; max-width: 320px; margin: 0.25rem auto 0 auto;">
+              Gunakan formulir tambah akun di atas untuk memulai.
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      activeSessionsList.forEach(session => {
+        const card = document.createElement('div');
+        card.className = `session-card`;
+        
+        let statusBadge = '';
+        let bodyContent = '';
+
+        if (session.status === 'connected') {
+          statusBadge = '<span class="badge badge-success">Terhubung</span>';
+          bodyContent = `
+            <div class="session-card-body">
+              <svg viewBox="0 0 24 24" style="width: 42px; height: 42px; fill: var(--success); display: inline-block;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+              <h4 style="font-weight: 700; color: var(--text-title); font-size: 0.9rem; margin-top:0.5rem;">WhatsApp Linked & Active</h4>
+              <p style="font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; max-width: 250px; margin: 0 auto;">Nomor WhatsApp pada sesi ini aktif dan siap memproses pesan otomatis via REST API.</p>
+            </div>
+          `;
+        } else if (session.status === 'qr' && session.qr) {
+          statusBadge = '<span class="badge badge-warning">Awaiting Scan</span>';
+          bodyContent = `
+            <div class="session-card-body">
+              <p style="font-size: 0.8rem; font-weight: 700; color: var(--text-title);">Pindai QR Code Menggunakan Handphone</p>
+              <p style="font-size: 0.75rem; color: var(--text-muted); max-width: 260px; line-height:1.3; margin:0.2rem auto 0.5rem auto;">
+                Buka menu **Perangkat Tertaut** pada WhatsApp HP Anda, lalu arahkan kamera ke kode di bawah ini.
+              </p>
+              <div class="qr-box" id="qr-${session.id}"></div>
+            </div>
+          `;
+        } else if (session.status === 'connecting') {
+          statusBadge = '<span class="badge badge-info">Connecting...</span>';
+          bodyContent = `
+            <div class="session-card-body" style="padding: 2.5rem 1rem;">
+              <div class="spinner" style="width: 24px; height: 24px; border-width: 3px; margin: 0 auto 0.5rem auto;"></div>
+              <h4 style="font-weight: 700; color: var(--text-title); font-size: 0.85rem;">Menyiapkan Sesi Server...</h4>
+              <p style="font-size: 0.75rem; color: var(--text-muted); line-height:1.4;">Menginisialisasi pustaka Baileys WhatsApp. Ini memakan waktu 5-10 detik...</p>
+            </div>
+          `;
+        } else {
+          statusBadge = '<span class="badge badge-danger">Offline</span>';
+          bodyContent = `
+            <div class="session-card-body" style="padding: 2.5rem 1rem;">
+              <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; fill: var(--text-muted); margin: 0 auto 0.5rem auto; display: inline-block;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <h4 style="font-weight: 700; color: var(--text-title); font-size: 0.85rem;">Koneksi Tidak Aktif</h4>
+              <p style="font-size: 0.75rem; color: var(--text-muted); line-height:1.4; max-width:240px; margin: 0 auto;">Koneksi sedang terputus. Klik tombol "Hubungkan" di bawah untuk menerbitkan QR code kembali.</p>
+            </div>
+          `;
+        }
+
+        const isConnecting = session.status === 'connecting';
+        const isConnected = session.status === 'connected';
+
+        card.innerHTML = `
+          <div class="session-card-header">
+            <span class="session-id" style="font-weight:700; font-size:0.9rem;">Akun: <code style="color:var(--primary); font-family:monospace;">${session.id}</code></span>
+            ${statusBadge}
+          </div>
+          
+          ${bodyContent}
+          
+          <div class="session-card-footer">
+            ${
+              isConnected || session.status === 'qr'
+                ? `<button class="btn-danger" onclick="deleteSession('${session.id}')">Putus Koneksi</button>`
+                : `<button class="btn-secondary" onclick="initSession('${session.id}')" ${isConnecting ? 'disabled' : ''}>
+                    Hubungkan Perangkat
+                   </button>`
+            }
+          </div>
+        `;
+
+        sessionsContainer.appendChild(card);
+
+        // Render QR Code if element exists and qr code is present
+        if (session.status === 'qr' && session.qr) {
+          setTimeout(() => {
+            const container = document.getElementById(`qr-${session.id}`);
+            if (container) {
+              container.innerHTML = '';
+              new QRCode(container, {
+                text: session.qr,
+                width: 140,
+                height: 140,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.M
+              });
+            }
+          }, 50);
+        }
+      });
+    }
+
+    // Update the dropdown in the sandbox & chat forms
+    function updateSandboxDropdown() {
+      if (!sandboxSessionSelect) return;
+      const currentVal = sandboxSessionSelect.value;
+      sandboxSessionSelect.innerHTML = '';
+      
+      const chatSelect = document.getElementById('chat-session-select');
+      const currentChatVal = chatSelect ? chatSelect.value : 'default';
+      if (chatSelect) chatSelect.innerHTML = '';
+
+      const available = activeSessionsList.filter(s => s.status === 'connected');
+      
+      if (available.length === 0) {
+        sandboxSessionSelect.innerHTML = '<option value="">(Belum ada akun terhubung)</option>';
+        if (chatSelect) chatSelect.innerHTML = '<option value="default">Sesi default (Offline)</option>';
+        return;
+      }
+
+      available.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `Akun WA: ${s.id}`;
+        if (s.id === currentVal) opt.selected = true;
+        sandboxSessionSelect.appendChild(opt);
+
+        if (chatSelect) {
+          const chatOpt = document.createElement('option');
+          chatOpt.value = s.id;
+          chatOpt.textContent = `Akun WA: ${s.id}`;
+          if (s.id === currentChatVal) chatOpt.selected = true;
+          chatSelect.appendChild(chatOpt);
+        }
+      });
+    }
+
+    // Update the dropdown in the campaign form
+    function updateCampaignSenderDropdown() {
+      const campaignSenderSelect = document.getElementById('campaign-sender');
+      if (!campaignSenderSelect) return;
+      const currentVal = campaignSenderSelect.value;
+      campaignSenderSelect.innerHTML = '';
+      
+      const available = activeSessionsList.filter(s => s.status === 'connected');
+      
+      if (available.length === 0) {
+        campaignSenderSelect.innerHTML = '<option value="">(Belum ada akun terhubung)</option>';
+        return;
+      }
+
+      available.forEach(s => {
+        const opt = document.createElement('option');
+        opt.value = s.id;
+        opt.textContent = `Akun WA: ${s.id}`;
+        if (s.id === currentVal) opt.selected = true;
+        campaignSenderSelect.appendChild(opt);
+      });
+    }
+
+    // Load campaigns list from server
+    async function loadCampaigns() {
+      try {
+        const response = await apiFetch('/api/v1/broadcasts');
+        const res = await response.json();
+        if (res.status === 'success' && res.data) {
+          renderCampaigns(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load campaigns:', err.message);
+      }
+    }
+
+    // Render campaigns into DOM table
+    function renderCampaigns(campaigns) {
+      const tbody = document.getElementById('campaigns-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      let totalSuccess = 0;
+      let totalFailed = 0;
+      let isWorkerActive = false;
+
+      campaigns.forEach(c => {
+        totalSuccess += (c.sent_count || 0);
+        totalFailed += (c.failed_count || 0);
+        if (c.status === 'processing' || c.status === 'pending') {
+          isWorkerActive = true;
+        }
+      });
+
+      const totalCampaignsEl = document.getElementById('stats-total-campaigns');
+      if (totalCampaignsEl) totalCampaignsEl.innerText = campaigns.length;
+      
+      const successfulEl = document.getElementById('stats-successful-broadcasts');
+      if (successfulEl) successfulEl.innerText = totalSuccess;
+      
+      const failedEl = document.getElementById('stats-failed-broadcasts');
+      if (failedEl) failedEl.innerText = totalFailed;
+      
+      const queueStatusLabel = document.getElementById('stats-queue-status');
+      if (queueStatusLabel) {
+        if (isWorkerActive) {
+          queueStatusLabel.innerText = 'Processing';
+          queueStatusLabel.style.color = 'var(--warning)';
+        } else {
+          queueStatusLabel.innerText = 'Idle';
+          queueStatusLabel.style.color = 'var(--text-muted)';
+        }
+      }
+
+      if (campaigns.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align:center; padding: 2.5rem; color:var(--text-muted);">
+              Belum ada data kampanye broadcast yang dibuat.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      campaigns.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.id = `campaign-row-${c.id}`;
+        
+        const dateStr = new Date(c.created_at).toLocaleString('id-ID', {
+          day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+        });
+
+        const total = c.total_recipients || 1;
+        const processed = (c.sent_count || 0) + (c.failed_count || 0);
+        const percent = Math.min(100, Math.round((processed / total) * 100));
+
+        let statusBadge = '';
+        let fillClass = '';
+        if (c.status === 'completed') {
+          statusBadge = '<span class="badge badge-success">Selesai</span>';
+          fillClass = 'success';
+        } else if (c.status === 'processing') {
+          statusBadge = '<span class="badge badge-warning">Proses...</span>';
+        } else if (c.status === 'failed') {
+          statusBadge = '<span class="badge badge-danger">Gagal</span>';
+          fillClass = 'danger';
+        } else {
+          statusBadge = `<span class="badge badge-info">${c.status}</span>`;
+        }
+
+        tr.innerHTML = `
+          <td>
+            <div style="font-weight:700; color:var(--text-title); text-align: left;">${escapeHtml(c.name)}</div>
+            <div style="font-size:0.75rem; color:var(--text-muted); text-align: left;">${dateStr}</div>
+          </td>
+          <td>
+            <code style="font-family:monospace; color:var(--primary); font-weight:600;">${escapeHtml(c.session_id)}</code>
+          </td>
+          <td>
+            <div class="progress-bar-container">
+              <div class="progress-bar-fill ${fillClass}" id="progress-fill-${c.id}" style="width: ${percent}%;"></div>
+            </div>
+            <div class="progress-text">
+              <span id="progress-nums-${c.id}">${processed}/${total} Kontak</span>
+              <span id="progress-percent-${c.id}">${percent}%</span>
+            </div>
+          </td>
+          <td id="campaign-status-${c.id}">
+            ${statusBadge}
+          </td>
+          <td>
+            <button class="btn-secondary" onclick="viewCampaignDetails('${c.id}')" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px;">
+              🔍 Logs
+            </button>
+          </td>
+        `;
+        
+        tbody.appendChild(tr);
+      });
+    }
+
+    // Modal view campaigns details
+    async function viewCampaignDetails(id) {
+      const modal = document.getElementById('campaign-detail-modal');
+      
+      const title = document.getElementById('modal-campaign-title');
+      const sender = document.getElementById('modal-info-sender');
+      const total = document.getElementById('modal-info-total');
+      const success = document.getElementById('modal-info-success');
+      const failed = document.getElementById('modal-info-failed');
+      const message = document.getElementById('modal-info-message');
+      const list = document.getElementById('modal-recipients-list');
+
+      if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:2rem;"><div class="spinner" style="margin: 0 auto;"></div></td></tr>';
+      if (modal) modal.classList.add('active');
+
+      try {
+        const response = await apiFetch(`/api/v1/broadcasts/${id}`);
+        const res = await response.json();
+        
+        if (res.status === 'success' && res.data) {
+          const c = res.data;
+          
+          if (title) title.innerText = `Detail Kampanye: ${c.name}`;
+          if (sender) sender.innerText = c.session_id;
+          if (total) total.innerText = `${c.total_recipients} Kontak`;
+          if (success) success.innerText = `${c.sent_count || 0} Terkirim`;
+          if (failed) failed.innerText = `${c.failed_count || 0} Gagal`;
+          if (message) message.innerText = c.message;
+
+          if (list) {
+            list.innerHTML = '';
+            if (!c.recipients || c.recipients.length === 0) {
+              list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--text-muted);">Tidak ada kontak penerima.</td></tr>';
+              return;
+            }
+
+            c.recipients.forEach(r => {
+              const tr = document.createElement('tr');
+              
+              let statusBadge = '';
+              if (r.status === 'sent') {
+                statusBadge = '<span class="badge badge-success">Sukses</span>';
+              } else if (r.status === 'failed') {
+                statusBadge = '<span class="badge badge-danger">Gagal</span>';
+              } else {
+                statusBadge = '<span class="badge badge-warning">Mengantre</span>';
+              }
+
+              let logDetails = '';
+              if (r.status === 'sent' && r.sent_at) {
+                logDetails = new Date(r.sent_at).toLocaleTimeString('id-ID');
+              } else if (r.status === 'failed') {
+                logDetails = `<span style="color:var(--danger); font-size:0.75rem;">${escapeHtml(r.error_message || 'Gagal terkirim')}</span>`;
+              } else {
+                logDetails = '<span style="color:var(--text-muted); font-size:0.75rem;">Menunggu giliran</span>';
+              }
+
+              tr.innerHTML = `
+                <td style="font-family:monospace; font-weight:600; padding:0.5rem 1rem;">${escapeHtml(r.phone)}</td>
+                <td style="padding:0.5rem 1rem;">${statusBadge}</td>
+                <td style="padding:0.5rem 1rem; text-align: left;">${logDetails}</td>
+              `;
+              list.appendChild(tr);
+            });
+          }
+        } else {
+          if (list) list.innerHTML = '<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--danger);">Gagal memuat log penerima.</td></tr>';
+        }
+      } catch (err) {
+        if (list) list.innerHTML = `<tr><td colspan="3" style="text-align:center; padding:1.5rem; color:var(--danger);">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function closeCampaignModal() {
+      const modal = document.getElementById('campaign-detail-modal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    function checkSystemStats() {
+      apiFetch('/api/v1/status')
+      .then(res => res.json())
+      .then(res => {
+        if (res.status === 'success' && res.data) {
+          const dbConnected = res.data.database.connected;
+          const dbLabel = document.getElementById('stats-db-status');
+          const dbIconWrap = document.getElementById('db-icon-wrap');
+
+          if (dbLabel) {
+            if (dbConnected) {
+              dbLabel.innerText = 'MySQL Online';
+              dbLabel.style.color = 'var(--success)';
+              if (dbIconWrap) {
+                dbIconWrap.style.background = '#dcfce7';
+                const icon = dbIconWrap.querySelector('svg');
+                if (icon) icon.setAttribute('fill', '#16a34a');
+              }
+            } else {
+              dbLabel.innerText = 'In-Memory';
+              dbLabel.style.color = 'var(--text-muted)';
+              if (dbIconWrap) {
+                dbIconWrap.style.background = '#f1f5f9';
+                const icon = dbIconWrap.querySelector('svg');
+                if (icon) icon.setAttribute('fill', '#94a3b8');
+              }
+            }
+          }
+
+          // Update WA session counts from activeSessionsList
+          const totalEl = document.getElementById('stats-total-sessions');
+          const connectedEl = document.getElementById('stats-connected-sessions');
+          if (totalEl) totalEl.innerText = activeSessionsList.length;
+          if (connectedEl) connectedEl.innerText = activeSessionsList.filter(s => s.status === 'connected').length;
+        }
+      })
+      .catch(err => {
+        console.warn('Gagal memuat status database:', err.message);
+      });
+    }
+
+    // ===================================================
+    // LIVE CHAT CONSOLE LOGIC
+    // ===================================================
+    async function loadChats() {
+      const session = activeChatSession;
+      try {
+        const response = await apiFetch(`/api/v1/chats?session=${session}`);
+        const res = await response.json();
+        if (res.status === 'success' && res.data) {
+          renderChats(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load chats:', err.message);
+      }
+    }
+
+    function renderChats(chats) {
+      if (!chatThreadsList) return;
+      chatThreadsList.innerHTML = '';
+
+      const filterVal = chatSearchInput ? chatSearchInput.value.trim().toLowerCase() : '';
+      
+      // Clone chats list to allow prepending a placeholder if active room has no messages
+      let displayChats = [...chats];
+      const hasActivePhone = displayChats.some(c => c.phone === activeChatPhone);
+      if (activeChatPhone && !hasActivePhone) {
+        const matchesFilter = !filterVal || activeChatPhone.toLowerCase().includes(filterVal);
+        if (matchesFilter) {
+          displayChats.unshift({
+            phone: activeChatPhone,
+            message: 'Percakapan baru (Belum ada pesan)',
+            from_me: false,
+            created_at: new Date(),
+            is_placeholder: true
+          });
+        }
+      }
+
+      const filtered = displayChats.filter(c => {
+        return c.phone.toLowerCase().includes(filterVal);
+      });
+
+      if (filtered.length === 0) {
+        chatThreadsList.innerHTML = `
+          <div style="padding: 3rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+            Tidak ada percakapan.
+          </div>
+        `;
+        return;
+      }
+
+      filtered.forEach(c => {
+        const isSelected = c.phone === activeChatPhone;
+        const card = document.createElement('div');
+        card.className = `chat-thread-card ${isSelected ? 'active' : ''}`;
+        
+        card.style.padding = '1rem 1.25rem';
+        card.style.borderBottom = '1px solid var(--border-color)';
+        card.style.cursor = 'pointer';
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.gap = '0.75rem';
+        card.style.transition = 'var(--transition)';
+        card.style.background = isSelected ? 'var(--primary-light)' : 'transparent';
+        card.style.borderLeft = isSelected ? '4px solid var(--primary)' : '4px solid transparent';
+
+        card.addEventListener('mouseenter', () => {
+          if (!isSelected) card.style.background = 'var(--bg-slate)';
+        });
+        card.addEventListener('mouseleave', () => {
+          if (!isSelected) card.style.background = 'transparent';
+        });
+
+        card.addEventListener('click', () => {
+          selectChatRoom(c.phone);
+        });
+
+        const dateStr = c.is_placeholder ? '' : new Date(c.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const lastMsg = c.message || '';
+        const prefix = c.from_me ? '<span style="color:var(--primary);">Anda: </span>' : '';
+
+        card.innerHTML = `
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: #eff6ff; color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; flex-shrink: 0; font-size: 0.85rem;">
+            ${c.phone.slice(-4)}
+          </div>
+          <div style="flex: 1; min-width: 0; text-align: left;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+              <span style="font-weight: 700; color: var(--text-title); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${c.phone}</span>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">${dateStr}</span>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              ${prefix}${escapeHtml(lastMsg)}
+            </div>
+          </div>
+        `;
+
+        chatThreadsList.appendChild(card);
+      });
+    }
+
+    function selectChatRoom(phone) {
+      activeChatPhone = phone;
+      loadChats();
+      loadChatHistory(phone);
+    }
+
+    async function loadChatHistory(phone) {
+      const session = activeChatSession;
+
+      if (chatMessagesFeed) {
+        chatMessagesFeed.innerHTML = `
+          <div style="margin: auto; text-align: center;">
+            <div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div>
+            <p style="font-size: 0.8rem; margin-top: 0.5rem; color: var(--text-muted);">Memuat histori chat...</p>
+          </div>
+        `;
+      }
+
+      if (chatInputContainer) chatInputContainer.style.display = 'flex';
+
+      if (chatActiveHeader) {
+        chatActiveHeader.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; text-align: left;">
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem;">
+              ${phone.slice(-4)}
+            </div>
+            <div>
+              <div style="font-weight: 700; color: var(--text-title); font-size: 0.9rem;">${phone}</div>
+              <div style="font-size: 0.75rem; color: var(--success); font-weight: 600;">Aktif Percakapan</div>
+            </div>
+          </div>
+          <button class="btn-secondary" onclick="closeChatRoom()" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; border-radius: 4px; background: transparent; border: none; cursor: pointer; color: var(--text-muted);">✕ Tutup</button>
+        `;
+      }
+
+      try {
+        const response = await apiFetch(`/api/v1/chats/${phone}/messages?session=${session}`);
+        const res = await response.json();
+        if (res.status === 'success' && res.data) {
+          renderMessagesFeed(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load message history:', err.message);
+      }
+    }
+
+    function closeChatRoom() {
+      activeChatPhone = null;
+      if (chatInputContainer) chatInputContainer.style.display = 'none';
+      if (chatActiveHeader) {
+        chatActiveHeader.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 0.75rem; text-align: left;">
+            <div style="width: 40px; height: 40px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-weight: 700;">?</div>
+            <div>
+              <div style="font-weight: 700; color: var(--text-title); font-size: 0.9rem;">Pilih Percakapan</div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Pilih nomor di sebelah kiri untuk melihat pesan</div>
+            </div>
+          </div>
+        `;
+      }
+      if (chatMessagesFeed) {
+        chatMessagesFeed.innerHTML = `
+          <div style="margin: auto; text-align: center; max-width: 320px; padding: 2rem; color: var(--text-muted);">
+            <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" style="color: #cbd5e1; margin-bottom: 0.75rem; display: inline-block;"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            <h4 style="font-weight: 700; color: var(--text-title); font-size: 0.95rem; margin-bottom: 0.25rem;">Live Chat Console</h4>
+            <p style="font-size: 0.8rem; line-height: 1.4;">Pilih salah satu nomor WhatsApp di sebelah kiri untuk membalas secara real-time dan melihat histori chat.</p>
+          </div>
+        `;
+      }
+      loadChats();
+    }
+
+    function renderMessagesFeed(messages) {
+      if (!chatMessagesFeed) return;
+      chatMessagesFeed.innerHTML = '';
+
+      if (messages.length === 0) {
+        chatMessagesFeed.innerHTML = `
+          <div style="margin: auto; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+            Belum ada percakapan. Mulai kirim pesan di bawah.
+          </div>
+        `;
+        return;
+      }
+
+      messages.forEach(m => {
+        const bubble = document.createElement('div');
+        bubble.id = `msg-${m.msg_id}`;
+        const timeStr = new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        
+        bubble.style.display = 'flex';
+        bubble.style.flexDirection = 'column';
+        bubble.style.maxWidth = '70%';
+        bubble.style.padding = '0.75rem 1rem';
+        bubble.style.borderRadius = '12px';
+        bubble.style.fontSize = '0.85rem';
+        bubble.style.lineHeight = '1.4';
+        bubble.style.wordBreak = 'break-word';
+
+        if (m.from_me) {
+          bubble.style.alignSelf = 'flex-end';
+          bubble.style.backgroundColor = 'var(--primary)';
+          bubble.style.color = '#ffffff';
+          bubble.style.borderBottomRightRadius = '2px';
+        } else {
+          bubble.style.alignSelf = 'flex-start';
+          bubble.style.backgroundColor = '#ffffff';
+          bubble.style.color = 'var(--text-main)';
+          bubble.style.border = '1px solid var(--border-color)';
+          bubble.style.borderBottomLeftRadius = '2px';
+        }
+
+        bubble.innerHTML = `
+          <div style="text-align: left; white-space: pre-wrap;">${escapeHtml(m.message)}</div>
+          <div style="font-size: 0.65rem; margin-top: 0.25rem; align-self: flex-end; opacity: 0.7;">
+            ${timeStr}
+          </div>
+        `;
+
+        chatMessagesFeed.appendChild(bubble);
+      });
+
+      setTimeout(() => {
+        chatMessagesFeed.scrollTop = chatMessagesFeed.scrollHeight;
+      }, 50);
+    }
+
+    async function sendDirectChatMessage() {
+      if (!chatMessageTextarea || !btnChatSend) return;
+      const message = chatMessageTextarea.value.trim();
+      if (!message) return;
+
+      const phone = activeChatPhone;
+      const session = activeChatSession;
+
+      chatMessageTextarea.disabled = true;
+      btnChatSend.disabled = true;
+
+      if (chatTypingStatus) chatTypingStatus.style.display = 'block';
+
+      try {
+        const response = await apiFetch('/api/v1/send-message', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ phone, message, session })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+          chatMessageTextarea.value = '';
+          loadChatHistory(phone);
+        } else {
+          showToast('Kirim Gagal', data.message || 'Gagal mengirim pesan chat.', 'error');
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal menghubungi server.', 'error');
+      } finally {
+        chatMessageTextarea.disabled = false;
+        btnChatSend.disabled = false;
+        if (chatTypingStatus) chatTypingStatus.style.display = 'none';
+        chatMessageTextarea.focus();
+      }
+    }
+
+    function appendRealtimeMessage(m) {
+      if (!chatMessagesFeed) return;
+      
+      const exists = document.getElementById(`msg-${m.msgId}`);
+      if (exists) return;
+
+      const bubble = document.createElement('div');
+      bubble.id = `msg-${m.msgId}`;
+      const timeStr = new Date(m.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      
+      bubble.style.display = 'flex';
+      bubble.style.flexDirection = 'column';
+      bubble.style.maxWidth = '70%';
+      bubble.style.padding = '0.75rem 1rem';
+      bubble.style.borderRadius = '12px';
+      bubble.style.fontSize = '0.85rem';
+      bubble.style.lineHeight = '1.4';
+      bubble.style.wordBreak = 'break-word';
+
+      if (m.fromMe) {
+        bubble.style.alignSelf = 'flex-end';
+        bubble.style.backgroundColor = 'var(--primary)';
+        bubble.style.color = '#ffffff';
+        bubble.style.borderBottomRightRadius = '2px';
+      } else {
+        bubble.style.alignSelf = 'flex-start';
+        bubble.style.backgroundColor = '#ffffff';
+        bubble.style.color = 'var(--text-main)';
+        bubble.style.border = '1px solid var(--border-color)';
+        bubble.style.borderBottomLeftRadius = '2px';
+      }
+
+      bubble.innerHTML = `
+        <div style="text-align: left; white-space: pre-wrap;">${escapeHtml(m.message)}</div>
+        <div style="font-size: 0.65rem; margin-top: 0.25rem; align-self: flex-end; opacity: 0.7;">
+          ${timeStr}
+        </div>
+      `;
+
+      chatMessagesFeed.appendChild(bubble);
+      chatMessagesFeed.scrollTop = chatMessagesFeed.scrollHeight;
+    }
+
+    // New Chat Modal functions
+    function openNewChatModal() {
+      if (newChatModal) {
+        newChatModal.classList.add('active');
+        if (newChatPhoneInput) {
+          newChatPhoneInput.value = '';
+          setTimeout(() => newChatPhoneInput.focus(), 150);
+        }
+      }
+    }
+
+    // New Chat Modal functions
+    function closeNewChatModal() {
+      if (newChatModal) newChatModal.classList.remove('active');
+    }
+
+    function submitNewChat() {
+      if (!newChatPhoneInput) return;
+      let phone = newChatPhoneInput.value.trim();
+      if (!phone) {
+        showToast('Validasi Gagal', 'Nomor telepon tidak boleh kosong.', 'error');
+        return;
+      }
+
+      // Basic formatting helper
+      let cleaned = phone.replace(/[^0-9]/g, '');
+      if (cleaned.startsWith('0')) {
+        cleaned = '62' + cleaned.slice(1);
+      } else if (cleaned.startsWith('8')) {
+        cleaned = '62' + cleaned;
+      }
+
+      if (cleaned.length < 8) {
+        showToast('Validasi Gagal', 'Nomor telepon tidak valid (minimal 8 angka).', 'error');
+        return;
+      }
+
+      closeNewChatModal();
+      selectChatRoom(cleaned);
+    }
+
+    // =========================================================
+    // PROFILE & API KEY MANAGEMENT FUNCTIONS
+    // =========================================================
+    function loadSettingsProfile() {
+      const emailInput = document.getElementById('settings-profile-email');
+      if (emailInput) {
+        emailInput.value = localStorage.getItem('handcap_user_email') || 'randyfauzi24@gmail.com';
+      }
+    }
+
+    async function loadUserApiKeys() {
+      const tbody = document.getElementById('api-keys-table-body');
+      if (!tbody) return;
+
+      try {
+        const response = await apiFetch('/api/v1/api-keys');
+        const res = await response.json();
+        
+        if (res.status === 'success' && res.data) {
+          renderApiKeysList(res.data);
+        } else {
+          tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:1.5rem;">Gagal memuat API Key: ${res.message}</td></tr>`;
+        }
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:1.5rem;">Gagal memuat API Key: ${err.message}</td></tr>`;
+      }
+    }
+
+    let revealedApiKeys = new Set();
+    function toggleApiKeyVisibility(keyId, keyValue) {
+      const keySpan = document.getElementById(`key-val-${keyId}`);
+      const btn = document.getElementById(`key-toggle-btn-${keyId}`);
+      if (!keySpan || !btn) return;
+
+      if (revealedApiKeys.has(keyId)) {
+        revealedApiKeys.delete(keyId);
+        keySpan.innerText = '••••••••••••••••••••••••••••••••';
+        btn.innerText = 'Tampilkan';
+      } else {
+        revealedApiKeys.add(keyId);
+        keySpan.innerText = keyValue;
+        btn.innerText = 'Sembunyikan';
+      }
+    }
+
+    function copyApiKeyToClipboard(keyValue) {
+      navigator.clipboard.writeText(keyValue).then(() => {
+        showToast('Salin Sukses', 'API Key berhasil disalin ke clipboard!', 'success');
+      }).catch(err => {
+        showToast('Salin Gagal', 'Gagal menyalin API Key.', 'error');
+      });
+    }
+
+    function renderApiKeysList(keys) {
+      const tbody = document.getElementById('api-keys-table-body');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (keys.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align:center; padding: 2rem; color: var(--text-muted);">
+              Belum ada API Key terdaftar. Silakan buat di atas.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      keys.forEach(k => {
+        const tr = document.createElement('tr');
+        const createdDate = new Date(k.created_at).toLocaleDateString('id-ID', {
+          day: '2-digit', month: 'short', year: 'numeric'
+        });
+
+        tr.innerHTML = `
+          <td style="font-weight: 700; color: var(--text-title); text-align: left;">
+            ${escapeHtml(k.name)}
+          </td>
+          <td style="font-family: monospace; font-size: 0.8rem; text-align: left;">
+            <span id="key-val-${k.id}">••••••••••••••••••••••••••••••••</span>
+            <div style="display:inline-flex; gap: 0.25rem; margin-left: 0.5rem; vertical-align: middle;">
+              <button class="btn-secondary" id="key-toggle-btn-${k.id}" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="toggleApiKeyVisibility(${k.id}, '${k.key_value}')">
+                Tampilkan
+              </button>
+              <button class="btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.7rem; border-radius: 4px;" onclick="copyApiKeyToClipboard('${k.key_value}')">
+                Salin
+              </button>
+            </div>
+          </td>
+          <td>
+            ${createdDate}
+          </td>
+          <td style="text-align: right;">
+            <button class="btn-danger" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; display: inline-flex;" onclick="revokeApiKey(${k.id})">
+              Revoke
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function generateNewApiKey() {
+      const nameInput = document.getElementById('new-key-name');
+      const btn = document.getElementById('btn-generate-key');
+      if (!nameInput || !btn) return;
+
+      const name = nameInput.value.trim();
+      if (!name) {
+        showToast('Validasi Gagal', 'Nama identitas API Key wajib diisi.', 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<div class="spinner" style="border-left-color: white; width:12px; height:12px; display:inline-block;"></div> Generating...';
+
+      try {
+        const response = await apiFetch('/api/v1/api-keys', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ name })
+        });
+
+        const res = await response.json();
+        if (response.ok && res.status === 'success') {
+          nameInput.value = '';
+          
+          // Populate and show the reveal key modal
+          const revealInput = document.getElementById('revealed-api-key-val');
+          if (revealInput) revealInput.value = res.data.key_value;
+          
+          const modal = document.getElementById('reveal-key-modal');
+          if (modal) modal.classList.add('active');
+          
+          loadUserApiKeys();
+        } else {
+          showToast('Generate Gagal', res.message || 'Terjadi kesalahan.', 'error');
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal menghubungi server.', 'error');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '+ Generate Key Baru';
+      }
+    }
+
+    function copyRevealedApiKey() {
+      const input = document.getElementById('revealed-api-key-val');
+      if (!input) return;
+      navigator.clipboard.writeText(input.value).then(() => {
+        showToast('Salin Sukses', 'API Key baru berhasil disalin ke clipboard!', 'success');
+      }).catch(err => {
+        showToast('Salin Gagal', 'Gagal menyalin API Key.', 'error');
+      });
+    }
+
+    function closeRevealKeyModal() {
+      const modal = document.getElementById('reveal-key-modal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    async function revokeApiKey(keyId) {
+      if (!confirm('Apakah Anda yakin ingin mencabut (revoke) API Key ini? Aplikasi luar yang menggunakan key ini akan kehilangan akses secara instan.')) {
+        return;
+      }
+
+      try {
+        const response = await apiFetch(`/api/v1/api-keys/${keyId}`, {
+          method: 'DELETE'
+        });
+
+        const res = await response.json();
+        if (response.ok && res.status === 'success') {
+          showToast('Revoke Sukses', 'API Key berhasil dicabut.', 'success');
+          loadUserApiKeys();
+        } else {
+          showToast('Revoke Gagal', res.message || 'Terjadi kesalahan.', 'error');
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal menghubungi server.', 'error');
+      }
+    }
+
+    // Wrap initialization bindings into initApp
+    function initApp() {
+      // 1. Core elements mapping
+      sessionsContainer = document.getElementById('sessions-container');
+      newSessionNameInput = document.getElementById('new-session-name');
+      btnCreateSession = document.getElementById('btn-create-session');
+      
+      sandboxSessionSelect = document.getElementById('sandbox-session');
+      sandboxPhoneInput = document.getElementById('sandbox-phone');
+      sandboxApiKeyInput = document.getElementById('sandbox-api-key');
+      sandboxMessageInput = document.getElementById('sandbox-message');
+      btnSendMessage = document.getElementById('btn-send-message');
+      responseConsole = document.getElementById('response-console');
+
+      // Live Chat elements mapping
+      chatSessionSelect = document.getElementById('chat-session-select');
+      chatSearchInput = document.getElementById('chat-search-input');
+      chatThreadsList = document.getElementById('chat-threads-list');
+      chatActiveHeader = document.getElementById('chat-active-header');
+      chatMessagesFeed = document.getElementById('chat-messages-feed');
+      chatTypingStatus = document.getElementById('chat-typing-status');
+      chatInputContainer = document.getElementById('chat-input-container');
+      chatMessageTextarea = document.getElementById('chat-message-textarea');
+      btnChatSend = document.getElementById('btn-chat-send');
+
+      // New Chat modal element mappings
+      newChatModal = document.getElementById('new-chat-modal');
+      newChatPhoneInput = document.getElementById('new-chat-phone');
+
+      // Live Chat event listeners
+      const newChatTrigger = document.getElementById('btn-new-chat-trigger');
+      if (newChatTrigger) {
+        newChatTrigger.addEventListener('click', openNewChatModal);
+      }
+
+      const btnSubmitNewChat = document.getElementById('btn-submit-new-chat');
+      if (btnSubmitNewChat) {
+        btnSubmitNewChat.addEventListener('click', submitNewChat);
+      }
+
+      if (newChatPhoneInput) {
+        newChatPhoneInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitNewChat();
+          }
+        });
+      }
+
+      if (chatSessionSelect) {
+        chatSessionSelect.addEventListener('change', () => {
+          activeChatSession = chatSessionSelect.value;
+          closeChatRoom();
+        });
+      }
+
+      if (chatSearchInput) {
+        chatSearchInput.addEventListener('input', () => {
+          loadChats();
+        });
+      }
+
+      if (btnChatSend) {
+        btnChatSend.addEventListener('click', sendDirectChatMessage);
+      }
+
+      if (chatMessageTextarea) {
+        chatMessageTextarea.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendDirectChatMessage();
+          }
+        });
+      }
+
+      // 2. Load API Key from localStorage
+      if (localStorage.getItem('handcap_api_key')) {
+        const key = localStorage.getItem('handcap_api_key');
+        if (sandboxApiKeyInput) sandboxApiKeyInput.value = key;
+        const settingsKey = document.getElementById('settings-api-key');
+        if (settingsKey) settingsKey.value = key;
+      }
+
+      // 3. Socket.io Handlers
+      socket = io({
+        auth: {
+          token: localStorage.getItem('handcap_token') || ''
+        }
+      });
+
+      socket.on('connect', () => {
+        const label = document.getElementById('gateway-status-label');
+        if (label) label.innerText = 'Server Active';
+        const dot = document.querySelector('.status-dot');
+        if (dot) dot.style.backgroundColor = 'var(--success)';
+        showToast('Koneksi Server', 'Console terhubung ke WebSocket Gateway Server.', 'success');
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('Socket authentication error:', err.message);
+        if (err.message && err.message.includes('Authentication error')) {
+          showToast('Sesi Berakhir', 'Sesi login Anda tidak valid atau telah kedaluwarsa. Silakan login kembali.', 'error');
+          setTimeout(logoutUser, 2000);
+        }
+      });
+
+      socket.on('disconnect', () => {
+        const label = document.getElementById('gateway-status-label');
+        if (label) label.innerText = 'Server Offline';
+        const dot = document.querySelector('.status-dot');
+        if (dot) dot.style.backgroundColor = 'var(--danger)';
+        showToast('Koneksi Terputus', 'Kehilangan sambungan ke WebSocket server.', 'error');
+      });
+
+      socket.on('new-message', (data) => {
+        // Only process if it belongs to the currently active chat session
+        if (data.sessionId === activeChatSession) {
+          // If we are currently chatting with this user
+          if (activeChatPhone && data.phone === activeChatPhone) {
+            appendRealtimeMessage(data);
+          } else {
+            // If it's an incoming message, show a toast notification
+            const isFromMe = data.fromMe !== undefined ? data.fromMe : data.from_me;
+            if (!isFromMe) {
+              showToast(`Pesan Baru (${data.phone})`, data.message.length > 50 ? data.message.slice(0, 50) + '...' : data.message, 'info');
+            }
+          }
+          // Refresh the threads list to show updated excerpt
+          loadChats();
+        }
+      });
+
+      socket.on('all-sessions', (sessions) => {
+        activeSessionsList = sessions;
+        
+        const totalSessionsEl = document.getElementById('stats-total-sessions');
+        if (totalSessionsEl) totalSessionsEl.innerText = sessions.length;
+        
+        const connectedCount = sessions.filter(s => s.status === 'connected').length;
+        const connectedSessionsEl = document.getElementById('stats-connected-sessions');
+        if (connectedSessionsEl) connectedSessionsEl.innerText = connectedCount;
+
+        renderSessions();
+        updateSandboxDropdown();
+        updateCampaignSenderDropdown();
+      });
+
+      socket.on('status', (data) => {
+        console.log('Status perangkat diperbarui:', data);
+        const index = activeSessionsList.findIndex(s => s.id === data.sessionId);
+        if (index !== -1) {
+          activeSessionsList[index].status = data.status;
+          activeSessionsList[index].qr = data.qr;
+        } else {
+          activeSessionsList.push({
+            id: data.sessionId,
+            status: data.status,
+            qr: data.qr
+          });
+        }
+
+        const totalSessionsEl = document.getElementById('stats-total-sessions');
+        if (totalSessionsEl) totalSessionsEl.innerText = activeSessionsList.length;
+        
+        const connectedCount = activeSessionsList.filter(s => s.status === 'connected').length;
+        const connectedSessionsEl = document.getElementById('stats-connected-sessions');
+        if (connectedSessionsEl) connectedSessionsEl.innerText = connectedCount;
+
+        renderSessions();
+        updateSandboxDropdown();
+        updateCampaignSenderDropdown();
+      });
+
+      socket.on('session-error', (data) => {
+        showToast(`Kesalahan Sesi (${data.sessionId})`, data.message, 'error');
+      });
+
+      socket.on('campaign-progress', (data) => {
+        const { campaignId, sentCount, failedCount, totalRecipients, status } = data;
+        
+        const progressFill = document.getElementById(`progress-fill-${campaignId}`);
+        const progressNums = document.getElementById(`progress-nums-${campaignId}`);
+        const progressPercent = document.getElementById(`progress-percent-${campaignId}`);
+        const statusLabel = document.getElementById(`campaign-status-${campaignId}`);
+
+        const processed = sentCount + failedCount;
+        const percent = Math.min(100, Math.round((processed / totalRecipients) * 100));
+
+        if (progressFill) {
+          progressFill.style.width = `${percent}%`;
+          if (status === 'completed') {
+            progressFill.className = 'progress-bar-fill success';
+          } else {
+            progressFill.className = 'progress-bar-fill';
+          }
+        }
+
+        if (progressNums) {
+          progressNums.innerText = `${processed}/${totalRecipients} Kontak`;
+        }
+
+        if (progressPercent) {
+          progressPercent.innerText = `${percent}%`;
+        }
+
+        if (statusLabel) {
+          let statusBadge = '';
+          if (status === 'completed') {
+            statusBadge = '<span class="badge badge-success">Selesai</span>';
+          } else if (status === 'processing') {
+            statusBadge = '<span class="badge badge-warning">Proses...</span>';
+          } else {
+            statusBadge = `<span class="badge badge-info">${status}</span>`;
+          }
+          statusLabel.innerHTML = statusBadge;
+        }
+      });
+
+      socket.on('all-campaigns', (campaigns) => {
+        console.log('Semua kampanye diperbarui via Socket:', campaigns);
+        renderCampaigns(campaigns);
+      });
+
+      // 4. Form Submission Listeners
+      if (btnCreateSession) {
+        btnCreateSession.addEventListener('click', () => {
+          const name = newSessionNameInput.value.trim().replace(/[^a-zA-Z0-9_\-]/g, '');
+          if (!name) {
+            showToast('Validasi Gagal', 'Nama koneksi tidak boleh kosong dan harus berupa alfanumerik.', 'error');
+            return;
+          }
+          
+          socket.emit('join-session', { sessionId: name });
+          socket.emit('init-session', { sessionId: name });
+          newSessionNameInput.value = '';
+
+          const tabMenuConnection = document.querySelectorAll('.menu-item')[1];
+          if (tabMenuConnection) {
+            switchTab('tab-connections', tabMenuConnection);
+          }
+        });
+      }
+
+      if (btnSendMessage) {
+        btnSendMessage.addEventListener('click', async () => {
+          const session = sandboxSessionSelect.value;
+          const phone = sandboxPhoneInput.value.trim();
+          const apiKey = sandboxApiKeyInput.value.trim();
+          const message = sandboxMessageInput.value.trim();
+
+          if (!session) {
+            showToast('Sandbox Gagal', 'Hubungkan minimal satu nomor WhatsApp terlebih dahulu.', 'error');
+            return;
+          }
+          if (!phone) {
+            showToast('Sandbox Gagal', 'Nomor telepon tujuan wajib diisi.', 'error');
+            return;
+          }
+          if (!message) {
+            showToast('Sandbox Gagal', 'Isi pesan tidak boleh kosong.', 'error');
+            return;
+          }
+
+          localStorage.setItem('handcap_api_key', apiKey);
+          const settingsKey = document.getElementById('settings-api-key');
+          if (settingsKey) settingsKey.value = apiKey;
+
+          btnSendMessage.disabled = true;
+          btnSendMessage.innerHTML = '<div class="spinner" style="border-left-color: white; width:12px; height:12px; display: inline-block;"></div> Memproses antrean Anti-Ban...';
+          responseConsole.className = 'console-box';
+          responseConsole.innerText = 'Mengirim request POST ke /api/v1/send-message...';
+
+          try {
+            const response = await fetch('/api/v1/send-message', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+              },
+              body: JSON.stringify({ phone, message, session })
+            });
+
+            const data = await response.json();
+            responseConsole.innerText = JSON.stringify(data, null, 2);
+            
+            if (response.ok) {
+              responseConsole.classList.add('success');
+              showToast('Kirim Sukses', 'Pesan WhatsApp berhasil diproses antrean dan terkirim!', 'success');
+              sandboxMessageInput.value = '';
+            } else {
+              responseConsole.classList.add('error');
+              showToast('Kirim Gagal', data.message || 'Gagal mengirim pesan.', 'error');
+            }
+          } catch (err) {
+            responseConsole.classList.add('error');
+            responseConsole.innerText = `Kesalahan REST API:\n${err.message}`;
+            showToast('Network Error', 'Gagal menghubungi server API gateway.', 'error');
+          } finally {
+            btnSendMessage.disabled = false;
+            btnSendMessage.innerHTML = `
+              <svg width="16" height="16" fill="white" viewBox="0 0 24 24" style="transform:rotate(45deg); display: inline-block; margin-right: 4px;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              Kirim Pesan (Lewat Queue Anti-Ban)
+            `;
+          }
+        });
+      }
+
+      const btnLaunchCampaign = document.getElementById('btn-launch-campaign');
+      if (btnLaunchCampaign) {
+        btnLaunchCampaign.addEventListener('click', async () => {
+          const name = document.getElementById('campaign-name').value.trim();
+          const sessionId = document.getElementById('campaign-sender').value;
+          const message = document.getElementById('campaign-message').value.trim();
+          const recipientsText = document.getElementById('campaign-recipients').value.trim();
+
+          if (!name) {
+            showToast('Validasi Gagal', 'Nama kampanye wajib diisi.', 'error');
+            return;
+          }
+          if (!sessionId) {
+            showToast('Validasi Gagal', 'Silakan pilih WhatsApp Pengirim.', 'error');
+            return;
+          }
+          if (!recipientsText) {
+            showToast('Validasi Gagal', 'Daftar nomor penerima wajib diisi.', 'error');
+            return;
+          }
+          if (!message) {
+            showToast('Validasi Gagal', 'Isi pesan campaign wajib diisi.', 'error');
+            return;
+          }
+
+          const recipients = recipientsText.split('\n')
+            .map(num => num.trim())
+            .filter(num => num.length > 0);
+
+          btnLaunchCampaign.disabled = true;
+          btnLaunchCampaign.innerHTML = '<div class="spinner" style="border-left-color: white; width:12px; height:12px; display:inline-block; margin-right: 4px;"></div> Mengantrekan Campaign...';
+
+          try {
+            const response = await apiFetch('/api/v1/broadcasts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ name, sessionId, message, recipients })
+            });
+
+            const data = await response.json();
+            
+            if (response.ok) {
+              showToast('Campaign Berhasil', 'Kampanye broadcast berhasil diterbitkan dan sedang diproses antrean.', 'success');
+              document.getElementById('campaign-name').value = '';
+              document.getElementById('campaign-message').value = '';
+              document.getElementById('campaign-recipients').value = '';
+              loadCampaigns();
+            } else {
+              showToast('Gagal Luncurkan', data.message || 'Terjadi kesalahan.', 'error');
+            }
+          } catch (err) {
+            showToast('Network Error', 'Gagal menghubungi server.', 'error');
+          } finally {
+            btnLaunchCampaign.disabled = false;
+            btnLaunchCampaign.innerHTML = `
+              <svg width="16" height="16" fill="white" viewBox="0 0 24 24" style="margin-right: 4px; display: inline-block;"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+              Luncurkan Kampanye Broadcast
+            `;
+          }
+        });
+      }
+
+      const btnRefreshCampaigns = document.getElementById('btn-refresh-campaigns');
+      if (btnRefreshCampaigns) {
+        btnRefreshCampaigns.addEventListener('click', loadCampaigns);
+      }
+
+      // 5. Trigger Initial Status Checks
+      setTimeout(checkSystemStats, 1000);
+      setInterval(checkSystemStats, 15000);
+      setTimeout(loadCampaigns, 1000);
+    }
+
+    // Main event handler on load
+    document.addEventListener('DOMContentLoaded', async () => {
+      // A. Restore sidebar layout state (prevents visual flashing)
+      const sidebar = document.getElementById('app-sidebar');
+      const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+      if (isCollapsed && sidebar) {
+        sidebar.classList.add('collapsed');
+      }
+
+      // B. Load all partial templates
+      await loadPartials();
+
+      // C. Update toggle icon if collapsed
+      const toggleBtn = document.getElementById('sidebar-toggle');
+      if (isCollapsed && toggleBtn) {
+        toggleBtn.innerHTML = '<svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+      }
+
+      // D. Reveal Admin menu if logged-in user is the primary admin
+      // We detect this by checking the token's payload or the stored email
+      try {
+        const token = localStorage.getItem('handcap_token');
+        if (token) {
+          const payloadB64 = token.split('.')[1];
+          const payload = JSON.parse(atob(payloadB64));
+          const isAdmin = (payload.email === 'randyfauzi24@gmail.com' || payload.userId === 1);
+          const adminMenuItem = document.getElementById('sidebar-admin-users');
+          if (isAdmin && adminMenuItem) {
+            adminMenuItem.style.display = 'flex';
+          }
+        }
+      } catch (e) {
+        // Not a JWT or decoding failed – ignore silently
+      }
+
+      // E. Run app bindings
+      initApp();
+    });
+  </script>
+</body>
+</html>

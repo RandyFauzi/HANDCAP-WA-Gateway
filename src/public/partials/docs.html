@@ -1,0 +1,215 @@
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+      Panduan Integrasi HTTP REST API
+    </h3>
+  </div>
+  <div class="card-body" style="display:flex; flex-direction:column; gap:1.5rem;">
+    <p style="font-size: 0.85rem; color: var(--text-muted);">
+      Gunakan dokumentasi REST API di bawah ini untuk menghubungkan aplikasi/website Anda (seperti Sistem OTP, Kasir, Registrasi Laravel/PHP, CRM, dll.) ke gateway pengirim WhatsApp ini secara instan dan terjadwal.
+    </p>
+
+    <div style="background-color: var(--bg-slate); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding:1rem; font-size:0.85rem;">
+      <div style="display:flex; gap:1rem; align-items:center; margin-bottom: 0.5rem;">
+        <span style="background-color:#4f46e5; color:white; padding:0.2rem 0.5rem; border-radius:4px; font-weight:700; font-size:0.75rem;">POST</span>
+        <code style="font-weight:700; color:var(--text-title);">http://localhost:3001/api/v1/send-message</code>
+      </div>
+      <p style="color:var(--text-muted); font-size:0.8rem;">Endpoint ini memproses pengiriman pesan teks WhatsApp dengan prioritas antrean otomatis (Anti-Ban).</p>
+    </div>
+
+    <!-- Code tabs -->
+    <div>
+      <p style="font-weight:700; font-size:0.85rem; margin-bottom:0.5rem;">Contoh Request Integrasi Multi-Bahasa:</p>
+      
+      <!-- Tabs header -->
+      <div style="display:flex; gap:0.25rem; border-bottom: 1px solid var(--border-color); margin-bottom:0.75rem;">
+        <button onclick="switchDocTab('curl')" id="tab-btn-curl" class="btn-doc-tab active" style="font-size:0.8rem; font-weight:700; background:transparent; color:var(--primary); border:none; border-bottom:2px solid var(--primary); border-radius:0; padding:0.4rem 0.75rem; cursor:pointer; outline:none;">cURL (Bash)</button>
+        <button onclick="switchDocTab('laravel')" id="tab-btn-laravel" class="btn-doc-tab" style="font-size:0.8rem; font-weight:600; background:transparent; color:var(--text-muted); border:none; border-bottom:2px solid transparent; border-radius:0; padding:0.4rem 0.75rem; cursor:pointer; outline:none;">PHP (Laravel)</button>
+        <button onclick="switchDocTab('nodejs')" id="tab-btn-nodejs" class="btn-doc-tab" style="font-size:0.8rem; font-weight:600; background:transparent; color:var(--text-muted); border:none; border-bottom:2px solid transparent; border-radius:0; padding:0.4rem 0.75rem; cursor:pointer; outline:none;">JavaScript (Node)</button>
+        <button onclick="switchDocTab('python')" id="tab-btn-python" class="btn-doc-tab" style="font-size:0.8rem; font-weight:600; background:transparent; color:var(--text-muted); border:none; border-bottom:2px solid transparent; border-radius:0; padding:0.4rem 0.75rem; cursor:pointer; outline:none;">Python</button>
+      </div>
+
+      <!-- Tab Content: cURL -->
+      <div id="doc-content-curl" class="doc-code-block">
+        <div class="code-widget">
+          <div class="code-header">
+            <span>BASH / cURL Request</span>
+            <button class="btn-copy" onclick="copyToClipboard('curl-code')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Salin Kode</span>
+            </button>
+          </div>
+          <div class="code-body" id="curl-code">curl -X POST http://localhost:3001/api/v1/send-message \
+  -H "Authorization: Bearer supersecretapikey" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "phone": "62895366583095",
+    "message": "Halo! Kode OTP keamanan Anda adalah: 8842",
+    "session": "default",
+    "priority": "high"
+  }'</div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Laravel -->
+      <div id="doc-content-laravel" class="doc-code-block" style="display:none;">
+        <div class="code-widget">
+          <div class="code-header">
+            <span>PHP (Laravel HTTP Client)</span>
+            <button class="btn-copy" onclick="copyToClipboard('laravel-code')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Salin Kode</span>
+            </button>
+          </div>
+          <div class="code-body" id="laravel-code">use Illuminate\Support\Facades\Http;
+
+$response = Http::withHeaders([
+    'Authorization' => 'Bearer supersecretapikey',
+    'Content-Type' => 'application/json'
+])->post('http://localhost:3001/api/v1/send-message', [
+    'phone' => '62895366583095',
+    'message' => 'Halo! Kode OTP keamanan Anda adalah: 8842',
+    'session' => 'default',
+    'priority' => 'high' // 'high' mempercepat antrean (Instant OTP)
+]);
+
+if ($response->successful()) {
+    $data = $response->json();
+    // Berhasil diproses
+}</div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Node.js -->
+      <div id="doc-content-nodejs" class="doc-code-block" style="display:none;">
+        <div class="code-widget">
+          <div class="code-header">
+            <span>Node.js (Fetch API)</span>
+            <button class="btn-copy" onclick="copyToClipboard('nodejs-code')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Salin Kode</span>
+            </button>
+          </div>
+          <div class="code-body" id="nodejs-code">const apiKey = 'supersecretapikey';
+
+fetch('http://localhost:3001/api/v1/send-message', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    phone: '62895366583095',
+    message: 'Halo! Kode OTP keamanan Anda adalah: 8842',
+    session: 'default',
+    priority: 'high'
+  })
+})
+.then(res => res.json())
+.then(data => console.log('Response:', data))
+.catch(err => console.error('Error:', err));</div>
+        </div>
+      </div>
+
+      <!-- Tab Content: Python -->
+      <div id="doc-content-python" class="doc-code-block" style="display:none;">
+        <div class="code-widget">
+          <div class="code-header">
+            <span>Python (requests)</span>
+            <button class="btn-copy" onclick="copyToClipboard('python-code')">
+              <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/></svg>
+              <span>Salin Kode</span>
+            </button>
+          </div>
+          <div class="code-body" id="python-code">import requests
+
+url = "http://localhost:3001/api/v1/send-message"
+headers = {
+    "Authorization": "Bearer supersecretapikey",
+    "Content-Type": "application/json"
+}
+payload = {
+    "phone": "62895366583095",
+    "message": "Halo! Kode OTP keamanan Anda adalah: 8842",
+    "session": "default",
+    "priority": "high"
+}
+
+response = requests.post(url, json=payload, headers=headers)
+print(response.json())</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Payload Explanation -->
+    <div style="font-size: 0.85rem;">
+      <p style="font-weight:700; color:var(--text-title); margin-bottom:0.5rem;">Penjelasan Payload Parameter JSON:</p>
+      <table style="width:100%; border-collapse:collapse; text-align:left;">
+        <thead>
+          <tr style="border-bottom: 2px solid var(--border-color); color:var(--text-title); font-weight:700;">
+            <th style="padding:0.5rem;">Parameter</th>
+            <th style="padding:0.5rem;">Tipe</th>
+            <th style="padding:0.5rem;">Wajib</th>
+            <th style="padding:0.5rem;">Keterangan</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f1f5f9; color:var(--text-gray);">
+            <td style="padding:0.5rem; font-family:monospace; font-weight:600; color:var(--primary);">phone</td>
+            <td style="padding:0.5rem;">String</td>
+            <td style="padding:0.5rem; color:var(--danger);">Ya</td>
+            <td style="padding:0.5rem;">Nomor HP penerima (misal: 62895xxx atau 0895xxx). Otomatis dikonversi ke format internasional.</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9; color:var(--text-gray);">
+            <td style="padding:0.5rem; font-family:monospace; font-weight:600; color:var(--primary);">message</td>
+            <td style="padding:0.5rem;">String</td>
+            <td style="padding:0.5rem; color:var(--danger);">Ya</td>
+            <td style="padding:0.5rem;">Pesan teks yang ingin dikirimkan. Mendukung baris baru (\n).</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f1f5f9; color:var(--text-gray);">
+            <td style="padding:0.5rem; font-family:monospace; font-weight:600; color:var(--primary);">session</td>
+            <td style="padding:0.5rem;">String</td>
+            <td style="padding:0.5rem; color:var(--text-muted);">Tidak</td>
+            <td style="padding:0.5rem;">Nama koneksi pengirim yang terdaftar. Jika diabaikan, menggunakan sesi utama `default`.</td>
+          </tr>
+          <tr style="color:var(--text-gray);">
+            <td style="padding:0.5rem; font-family:monospace; font-weight:600; color:var(--primary);">priority</td>
+            <td style="padding:0.5rem;">String</td>
+            <td style="padding:0.5rem; color:var(--text-muted);">Tidak</td>
+            <td style="padding:0.5rem;">Isi dengan <code>"high"</code> jika pesan mendesak (misal: OTP). Pesan prioritas tinggi akan **didorong ke antrean terdepan** dan dikirim dalam **1-2 detik** (bypassing normal broadcast cooldown). Default: <code>"normal"</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Function to switch tabs in documentation page
+  function switchDocTab(lang) {
+    // Hide all code blocks
+    const blocks = document.querySelectorAll('.doc-code-block');
+    blocks.forEach(b => b.style.display = 'none');
+    
+    // Show active code block
+    const target = document.getElementById(`doc-content-${lang}`);
+    if (target) target.style.display = 'block';
+
+    // Update tab button classes
+    const buttons = document.querySelectorAll('.btn-doc-tab');
+    buttons.forEach(btn => {
+      btn.style.color = 'var(--text-muted)';
+      btn.style.borderBottomColor = 'transparent';
+      btn.classList.remove('active');
+    });
+
+    const activeBtn = document.getElementById(`tab-btn-${lang}`);
+    if (activeBtn) {
+      activeBtn.style.color = 'var(--primary)';
+      activeBtn.style.borderBottomColor = 'var(--primary)';
+      activeBtn.classList.add('active');
+    }
+  }
+</script>

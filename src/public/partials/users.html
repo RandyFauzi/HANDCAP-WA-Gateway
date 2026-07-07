@@ -1,0 +1,448 @@
+<div class="overview-header" style="margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+  <div>
+    <h2 style="font-size: 1.25rem; font-weight: 800; color: var(--text-title); letter-spacing: -0.5px;">Daftar Pengguna Gateway</h2>
+    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem;">Kelola akun pengguna, lihat rincian API Key, dan pantau kampanye broadcast mereka.</p>
+  </div>
+  <button onclick="openAddUserModal()" style="background-color: var(--primary); display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 700; padding: 0.65rem 1rem;">
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+      <circle cx="9" cy="7" r="4"></circle>
+      <line x1="19" y1="8" x2="19" y2="14"></line>
+      <line x1="22" y1="11" x2="16" y2="11"></line>
+    </svg>
+    <span>Tambah Pengguna</span>
+  </button>
+</div>
+
+<!-- Users Table Container -->
+<div style="background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden;">
+  <table class="premium-table">
+    <thead>
+      <tr>
+        <th style="width: 80px;">ID</th>
+        <th>Alamat Email</th>
+        <th>Tanggal Terdaftar</th>
+        <th style="width: 200px; text-align: right;">Aksi</th>
+      </tr>
+    </thead>
+    <tbody id="admin-users-list">
+      <tr>
+        <td colspan="4" style="text-align: center; padding: 3rem 0;">
+          <div class="spinner" style="margin: 0 auto 0.5rem auto;"></div>
+          <span style="color: var(--text-muted); font-size: 0.85rem;">Memuat daftar pengguna...</span>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ADD USER MODAL -->
+<div class="modal-backdrop" id="add-user-modal">
+  <div class="modal-card" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 class="card-title">Tambah Pengguna Baru</h3>
+      <button class="btn-secondary" onclick="closeAddUserModal()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; background: transparent; border: none; cursor: pointer;">✕</button>
+    </div>
+    <form id="add-user-form" onsubmit="handleCreateUser(event)">
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem; text-align: left;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="add-user-email">Alamat Email</label>
+          <input type="email" id="add-user-email" required placeholder="name@domain.com" style="width: 100%; margin-top: 0.25rem;">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="add-user-password">Kata Sandi</label>
+          <input type="password" id="add-user-password" required minlength="6" placeholder="Minimal 6 karakter..." style="width: 100%; margin-top: 0.25rem;">
+        </div>
+      </div>
+      <div class="modal-footer" style="gap: 0.5rem;">
+        <button type="button" class="btn-secondary" onclick="closeAddUserModal()">Batal</button>
+        <button type="submit" id="btn-submit-add-user" style="background-color: var(--primary);">Simpan Akun</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- EDIT USER MODAL -->
+<div class="modal-backdrop" id="edit-user-modal">
+  <div class="modal-card" style="max-width: 420px;">
+    <div class="modal-header">
+      <h3 class="card-title">Edit Akun Pengguna</h3>
+      <button class="btn-secondary" onclick="closeEditUserModal()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; background: transparent; border: none; cursor: pointer;">✕</button>
+    </div>
+    <form id="edit-user-form" onsubmit="handleUpdateUser(event)">
+      <input type="hidden" id="edit-user-id">
+      <div class="modal-body" style="display:flex; flex-direction:column; gap:1rem; text-align: left;">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="edit-user-email">Alamat Email</label>
+          <input type="email" id="edit-user-email" required placeholder="name@domain.com" style="width: 100%; margin-top: 0.25rem;">
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label for="edit-user-password">Kata Sandi Baru (Opsional)</label>
+          <input type="password" id="edit-user-password" minlength="6" placeholder="Kosongkan jika tidak ingin diubah..." style="width: 100%; margin-top: 0.25rem;">
+        </div>
+      </div>
+      <div class="modal-footer" style="gap: 0.5rem;">
+        <button type="button" class="btn-secondary" onclick="closeEditUserModal()">Batal</button>
+        <button type="submit" id="btn-submit-edit-user" style="background-color: var(--primary);">Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- USER DETAIL MODAL -->
+<div class="modal-backdrop" id="user-detail-modal">
+  <div class="modal-card" style="max-width: 650px;">
+    <div class="modal-header">
+      <h3 class="card-title" id="detail-modal-title">Rincian Detail Pengguna</h3>
+      <button class="btn-secondary" onclick="closeUserDetailModal()" style="padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 4px; background: transparent; border: none; cursor: pointer;">✕</button>
+    </div>
+    <div class="modal-body" style="display:flex; flex-direction:column; gap:1.25rem; text-align: left;">
+      <!-- Profile Card -->
+      <div style="background-color: var(--bg-slate); border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; font-size: 0.85rem; display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+        <div><strong>User ID:</strong> <span id="detail-info-id">-</span></div>
+        <div><strong>Email Pengguna:</strong> <span id="detail-info-email">-</span></div>
+        <div style="grid-column: 1 / -1; border-top: 1px solid var(--border-color); padding-top: 0.5rem; margin-top: 0.25rem;">
+          <strong>Tanggal Registrasi:</strong> <span id="detail-info-joined">-</span>
+        </div>
+      </div>
+
+      <!-- User API Keys list -->
+      <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        <label style="font-weight:700; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center;">
+          <span>API Keys Pengguna (<span id="detail-info-keys-count">0</span>)</span>
+        </label>
+        <div style="border:1px solid var(--border-color); border-radius: var(--radius-md); max-height: 150px; overflow-y: auto;">
+          <table class="premium-table" style="font-size:0.8rem;">
+            <thead>
+              <tr>
+                <th style="padding: 0.5rem 1rem;">Nama Kunci</th>
+                <th style="padding: 0.5rem 1rem;">Pratinjau Kunci</th>
+                <th style="padding: 0.5rem 1rem;">Dibuat Pada</th>
+              </tr>
+            </thead>
+            <tbody id="detail-api-keys-list">
+              <!-- API Keys loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- User Campaigns List -->
+      <div style="display:flex; flex-direction:column; gap:0.5rem;">
+        <label style="font-weight:700; font-size: 0.85rem;">
+          <span>Daftar Kampanye Broadcast (<span id="detail-info-campaigns-count">0</span>)</span>
+        </label>
+        <div style="border:1px solid var(--border-color); border-radius: var(--radius-md); max-height: 200px; overflow-y: auto;">
+          <table class="premium-table" style="font-size:0.8rem;">
+            <thead>
+              <tr>
+                <th style="padding: 0.5rem 1rem;">Nama Kampanye</th>
+                <th style="padding: 0.5rem 1rem;">Status</th>
+                <th style="padding: 0.5rem 1rem; text-align: right;">Progress (Sukses/Gagal)</th>
+              </tr>
+            </thead>
+            <tbody id="detail-campaigns-list">
+              <!-- Campaigns loaded here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeUserDetailModal()">Tutup Detail</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Load all users on tab activation
+  async function loadAdminUsers() {
+    const listContainer = document.getElementById('admin-users-list');
+    if (!listContainer) return;
+
+    try {
+      const response = await apiFetch('/api/v1/admin/users');
+      const res = await response.json();
+      
+      if (response.ok && res.status === 'success') {
+        const users = res.data;
+        if (users.length === 0) {
+          listContainer.innerHTML = `
+            <tr>
+              <td colspan="4" style="text-align: center; padding: 3rem 0; color: var(--text-muted);">
+                Belum ada pengguna terdaftar.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        listContainer.innerHTML = users.map(user => {
+          const formattedDate = new Date(user.created_at).toLocaleDateString('id-ID', {
+            day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+          });
+          
+          // Disable delete for primary admin (ID 1)
+          const isPrimaryAdmin = user.id === 1;
+          const deleteBtnAttr = isPrimaryAdmin ? 'disabled style="opacity: 0.4; cursor: not-allowed;"' : '';
+          
+          return `
+            <tr>
+              <td><strong>#${user.id}</strong></td>
+              <td>
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <span style="font-weight:600;">${escapeHtml(user.email)}</span>
+                  ${isPrimaryAdmin ? '<span class="badge badge-success" style="font-size:0.6rem; padding: 0.1rem 0.4rem;">SUPER ADMIN</span>' : ''}
+                </div>
+              </td>
+              <td>${formattedDate}</td>
+              <td style="text-align: right;">
+                <div style="display:flex; gap:0.4rem; justify-content: flex-end;">
+                  <button onclick="viewUserDetail(${user.id})" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: 4px;" title="Lihat Rincian Detail">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path></svg>
+                    <span>Detail</span>
+                  </button>
+                  <button onclick="openEditUserModal(${user.id}, '${escapeHtml(user.email)}')" class="btn-secondary" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: 4px;" title="Edit Pengguna">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    <span>Edit</span>
+                  </button>
+                  <button onclick="handleDeleteUser(${user.id}, '${escapeHtml(user.email)}')" class="btn-danger" style="padding: 0.4rem 0.75rem; font-size: 0.75rem; border-radius: 4px;" ${deleteBtnAttr} title="Hapus Pengguna">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                    <span>Hapus</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        showToast('Gagal', res.message || 'Gagal mengambil data pengguna.', 'error');
+      }
+    } catch (err) {
+      showToast('Error', 'Kesalahan koneksi ke server gateway.', 'error');
+    }
+  }
+
+  // View Details popup logic
+  async function viewUserDetail(userId) {
+    try {
+      const response = await apiFetch(`/api/v1/admin/users/${userId}`);
+      const res = await response.json();
+      
+      if (response.ok && res.status === 'success') {
+        const data = res.data;
+        
+        document.getElementById('detail-info-id').innerText = `#${data.user.id}`;
+        document.getElementById('detail-info-email').innerText = data.user.email;
+        document.getElementById('detail-info-joined').innerText = new Date(data.user.created_at).toLocaleDateString('id-ID', {
+          day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+        });
+        
+        document.getElementById('detail-info-keys-count').innerText = data.apiKeysCount;
+        document.getElementById('detail-info-campaigns-count').innerText = data.campaignsCount;
+
+        // Render API Keys
+        const keysList = document.getElementById('detail-api-keys-list');
+        if (data.apiKeys.length === 0) {
+          keysList.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Tidak ada API key aktif.</td></tr>';
+        } else {
+          keysList.innerHTML = data.apiKeys.map(k => `
+            <tr>
+              <td><strong>${escapeHtml(k.name)}</strong></td>
+              <td><code style="font-family:monospace; background:var(--bg-slate); padding: 0.15rem 0.35rem; border-radius:4px; font-size:0.75rem;">${escapeHtml(k.key_preview)}</code></td>
+              <td>${new Date(k.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+            </tr>
+          `).join('');
+        }
+
+        // Render Campaigns
+        const campaignsList = document.getElementById('detail-campaigns-list');
+        if (data.campaigns.length === 0) {
+          campaignsList.innerHTML = '<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Belum ada riwayat broadcast.</td></tr>';
+        } else {
+          campaignsList.innerHTML = data.campaigns.map(c => {
+            let statusBadge = '';
+            if (c.status === 'completed') statusBadge = '<span class="badge badge-success">Selesai</span>';
+            else if (c.status === 'processing') statusBadge = '<span class="badge badge-warning">Proses</span>';
+            else if (c.status === 'pending') statusBadge = '<span class="badge badge-info">Antrean</span>';
+            else statusBadge = `<span class="badge badge-danger">${escapeHtml(c.status)}</span>`;
+
+            return `
+              <tr>
+                <td><strong>${escapeHtml(c.name)}</strong></td>
+                <td>${statusBadge}</td>
+                <td style="text-align: right; font-family:monospace;">
+                  <span style="color:var(--success); font-weight:700;">${c.sent_count}</span> / 
+                  <span style="color:var(--danger); font-weight:700;">${c.failed_count}</span> 
+                  (${c.total_recipients})
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        // Open Modal
+        const modal = document.getElementById('user-detail-modal');
+        modal.classList.add('active');
+        gsap.fromTo(modal.querySelector('.modal-card'), 
+          { scale: 0.9, opacity: 0 }, 
+          { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.2)' }
+        );
+      } else {
+        showToast('Gagal', res.message || 'Gagal mengambil detail pengguna.', 'error');
+      }
+    } catch (err) {
+      showToast('Error', 'Gagal memuat detail pengguna.', 'error');
+    }
+  }
+
+  function closeUserDetailModal() {
+    const modal = document.getElementById('user-detail-modal');
+    gsap.to(modal.querySelector('.modal-card'), {
+      scale: 0.95,
+      opacity: 0,
+      duration: 0.25,
+      ease: 'power2.in',
+      onComplete: () => modal.classList.remove('active')
+    });
+  }
+
+  // Create user logic
+  function openAddUserModal() {
+    document.getElementById('add-user-form').reset();
+    const modal = document.getElementById('add-user-modal');
+    modal.classList.add('active');
+    gsap.fromTo(modal.querySelector('.modal-card'), 
+      { scale: 0.9, opacity: 0 }, 
+      { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.2)' }
+    );
+  }
+
+  function closeAddUserModal() {
+    const modal = document.getElementById('add-user-modal');
+    gsap.to(modal.querySelector('.modal-card'), {
+      scale: 0.95,
+      opacity: 0,
+      duration: 0.25,
+      ease: 'power2.in',
+      onComplete: () => modal.classList.remove('active')
+    });
+  }
+
+  async function handleCreateUser(e) {
+    e.preventDefault();
+    const email = document.getElementById('add-user-email').value.trim();
+    const password = document.getElementById('add-user-password').value;
+    const btnSubmit = document.getElementById('btn-submit-add-user');
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<div class="spinner"></div> <span>Menyimpan...</span>';
+
+    try {
+      const response = await apiFetch('/api/v1/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const res = await response.json();
+
+      if (response.ok && res.status === 'success') {
+        showToast('Sukses', `Pengguna ${email} berhasil terdaftar.`, 'success');
+        closeAddUserModal();
+        loadAdminUsers();
+      } else {
+        showToast('Gagal', res.message || 'Gagal membuat pengguna baru.', 'error');
+      }
+    } catch (err) {
+      showToast('Error', 'Kesalahan jaringan saat membuat pengguna.', 'error');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = 'Simpan Akun';
+    }
+  }
+
+  // Update user logic
+  function openEditUserModal(id, email) {
+    document.getElementById('edit-user-form').reset();
+    document.getElementById('edit-user-id').value = id;
+    document.getElementById('edit-user-email').value = email;
+
+    const modal = document.getElementById('edit-user-modal');
+    modal.classList.add('active');
+    gsap.fromTo(modal.querySelector('.modal-card'), 
+      { scale: 0.9, opacity: 0 }, 
+      { scale: 1, opacity: 1, duration: 0.3, ease: 'back.out(1.2)' }
+    );
+  }
+
+  function closeEditUserModal() {
+    const modal = document.getElementById('edit-user-modal');
+    gsap.to(modal.querySelector('.modal-card'), {
+      scale: 0.95,
+      opacity: 0,
+      duration: 0.25,
+      ease: 'power2.in',
+      onComplete: () => modal.classList.remove('active')
+    });
+  }
+
+  async function handleUpdateUser(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit-user-id').value;
+    const email = document.getElementById('edit-user-email').value.trim();
+    const password = document.getElementById('edit-user-password').value;
+    const btnSubmit = document.getElementById('btn-submit-edit-user');
+
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = '<div class="spinner"></div> <span>Menyimpan...</span>';
+
+    const payload = { email };
+    if (password) payload.password = password;
+
+    try {
+      const response = await apiFetch(`/api/v1/admin/users/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const res = await response.json();
+
+      if (response.ok && res.status === 'success') {
+        showToast('Sukses', `Data pengguna berhasil diperbarui.`, 'success');
+        closeEditUserModal();
+        loadAdminUsers();
+      } else {
+        showToast('Gagal', res.message || 'Gagal memperbarui pengguna.', 'error');
+      }
+    } catch (err) {
+      showToast('Error', 'Kesalahan jaringan saat memperbarui pengguna.', 'error');
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.innerHTML = 'Simpan Perubahan';
+    }
+  }
+
+  // Delete user logic
+  async function handleDeleteUser(userId, email) {
+    if (confirm(`Apakah Anda yakin ingin menghapus akun pengguna "${email}"? Semua API Keys dan riwayat kampanye miliknya akan dihapus permanen.`)) {
+      try {
+        const response = await apiFetch(`/api/v1/admin/users/${userId}`, {
+          method: 'DELETE'
+        });
+        const res = await response.json();
+
+        if (response.ok && res.status === 'success') {
+          showToast('Sukses', `Pengguna ${email} berhasil dihapus.`, 'success');
+          loadAdminUsers();
+        } else {
+          showToast('Gagal', res.message || 'Gagal menghapus pengguna.', 'error');
+        }
+      } catch (err) {
+        showToast('Error', 'Kesalahan jaringan saat menghapus pengguna.', 'error');
+      }
+    }
+  }
+
+  // Auto-init
+  loadAdminUsers();
+</script>
