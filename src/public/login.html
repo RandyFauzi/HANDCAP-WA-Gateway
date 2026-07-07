@@ -95,7 +95,7 @@
       justify-content: center;
       position: relative;
       transition: background 0.5s ease;
-      overflow: hidden; /* Prevent scrolling completely to fit 1 page */
+      overflow-y: auto; /* Allow scrolling if card exceeds viewport height */
     }
 
     @media (max-height: 640px) {
