@@ -438,7 +438,15 @@
 
   // Delete user logic
   async function handleDeleteUser(userId, email) {
-    if (confirm(`Apakah Anda yakin ingin menghapus akun pengguna "${email}"? Semua API Keys dan riwayat kampanye miliknya akan dihapus permanen.`)) {
+    const confirmDelete = await showCustomConfirm({
+      title: 'Hapus Akun Pengguna',
+      message: `Apakah Anda yakin ingin menghapus akun pengguna "${email}"? Semua API Keys dan riwayat kampanye miliknya akan dihapus permanen.`,
+      confirmText: 'Ya, Hapus Akun',
+      cancelText: 'Batal',
+      type: 'danger'
+    });
+
+    if (confirmDelete) {
       try {
         const response = await apiFetch(`/api/v1/admin/users/${userId}`, {
           method: 'DELETE'

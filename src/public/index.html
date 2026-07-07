@@ -1101,6 +1101,25 @@
     </div>
   </div>
 
+  <!-- Custom Popup Confirm/Alert Modal -->
+  <div class="modal-backdrop" id="custom-popup-modal" style="z-index: 11000;">
+    <div class="modal-card" style="max-width: 420px; border-radius: 16px; overflow: hidden; border: 1px solid var(--border-color); box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);">
+      <div class="modal-body" style="padding: 2.25rem 1.75rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
+        <div id="popup-icon-container" style="width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary); transition: var(--transition);">
+          <!-- Icon injected dynamically -->
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+          <h4 id="popup-title" style="font-size: 1.15rem; font-weight: 800; color: var(--text-title); margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;">Konfirmasi</h4>
+          <p id="popup-message" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;">Apakah Anda yakin?</p>
+        </div>
+      </div>
+      <div class="modal-footer" style="padding: 1rem 1.5rem; background-color: var(--bg-slate); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
+        <button class="btn-secondary" id="popup-btn-cancel" onclick="closeCustomPopup(false)" style="padding: 0.55rem 1.25rem; font-size: 0.8rem; border-radius: 8px; font-weight: 600;">Batal</button>
+        <button id="popup-btn-confirm" onclick="closeCustomPopup(true)" style="padding: 0.55rem 1.25rem; font-size: 0.8rem; border-radius: 8px; font-weight: 700; color: white;">Ya, Lanjutkan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Notification Container -->
   <div id="toast-container"></div>
 
@@ -1116,6 +1135,107 @@
       localStorage.removeItem('handcap_token');
       localStorage.removeItem('handcap_user_email');
       window.location.href = '/login.html';
+    }
+
+    // Global Custom Popup Dialog Promisified Helper
+    let popupResolveCallback = null;
+    
+    function showCustomConfirm({ title, message, confirmText = 'Ya, Lanjutkan', cancelText = 'Batal', type = 'warning' }) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-popup-modal');
+        const titleEl = document.getElementById('popup-title');
+        const msgEl = document.getElementById('popup-message');
+        const confirmBtn = document.getElementById('popup-btn-confirm');
+        const cancelBtn = document.getElementById('popup-btn-cancel');
+        const iconContainer = document.getElementById('popup-icon-container');
+
+        if (!modal || !titleEl || !msgEl || !confirmBtn || !cancelBtn || !iconContainer) {
+          resolve(confirm(message));
+          return;
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        confirmBtn.innerText = confirmText;
+        cancelBtn.innerText = cancelText;
+        cancelBtn.style.display = 'block';
+
+        if (type === 'danger') {
+          iconContainer.style.backgroundColor = 'var(--danger-light)';
+          iconContainer.style.color = 'var(--danger)';
+          iconContainer.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+          confirmBtn.className = 'btn-danger';
+          confirmBtn.style.backgroundColor = 'var(--danger)';
+          confirmBtn.style.color = 'white';
+        } else if (type === 'warning') {
+          iconContainer.style.backgroundColor = 'var(--warning-light)';
+          iconContainer.style.color = 'var(--warning)';
+          iconContainer.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+          confirmBtn.className = '';
+          confirmBtn.style.backgroundColor = 'var(--warning)';
+          confirmBtn.style.color = 'white';
+        } else {
+          iconContainer.style.backgroundColor = 'var(--primary-light)';
+          iconContainer.style.color = 'var(--primary)';
+          iconContainer.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+          confirmBtn.className = '';
+          confirmBtn.style.backgroundColor = 'var(--primary)';
+          confirmBtn.style.color = 'white';
+        }
+
+        popupResolveCallback = resolve;
+        modal.classList.add('active');
+      });
+    }
+
+    function showCustomAlert({ title, message, buttonText = 'OK', type = 'info' }) {
+      return new Promise((resolve) => {
+        const modal = document.getElementById('custom-popup-modal');
+        const titleEl = document.getElementById('popup-title');
+        const msgEl = document.getElementById('popup-message');
+        const confirmBtn = document.getElementById('popup-btn-confirm');
+        const cancelBtn = document.getElementById('popup-btn-cancel');
+        const iconContainer = document.getElementById('popup-icon-container');
+
+        if (!modal || !titleEl || !msgEl || !confirmBtn || !cancelBtn || !iconContainer) {
+          alert(message);
+          resolve();
+          return;
+        }
+
+        titleEl.innerText = title;
+        msgEl.innerText = message;
+        confirmBtn.innerText = buttonText;
+        cancelBtn.style.display = 'none';
+
+        if (type === 'success') {
+          iconContainer.style.backgroundColor = 'var(--success-light)';
+          iconContainer.style.color = 'var(--success)';
+          iconContainer.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+          confirmBtn.className = '';
+          confirmBtn.style.backgroundColor = 'var(--success)';
+          confirmBtn.style.color = 'white';
+        } else {
+          iconContainer.style.backgroundColor = 'var(--primary-light)';
+          iconContainer.style.color = 'var(--primary)';
+          iconContainer.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>`;
+          confirmBtn.className = '';
+          confirmBtn.style.backgroundColor = 'var(--primary)';
+          confirmBtn.style.color = 'white';
+        }
+
+        popupResolveCallback = resolve;
+        modal.classList.add('active');
+      });
+    }
+
+    function closeCustomPopup(confirmed) {
+      const modal = document.getElementById('custom-popup-modal');
+      if (modal) modal.classList.remove('active');
+      if (popupResolveCallback) {
+        popupResolveCallback(confirmed);
+        popupResolveCallback = null;
+      }
     }
 
     async function apiFetch(url, options = {}) {
@@ -1476,8 +1596,16 @@ print(response.json())`;
     }
 
     // Disconnect trigger
-    function deleteSession(id) {
-      if (confirm(`Apakah Anda yakin ingin memutuskan koneksi sesi "${id}"? Data kredensial lokal akan dibersihkan dari server.`)) {
+    async function deleteSession(id) {
+      const confirmDelete = await showCustomConfirm({
+        title: 'Putuskan Sesi WhatsApp',
+        message: `Apakah Anda yakin ingin memutuskan koneksi sesi "${id}"? Data kredensial lokal akan dibersihkan dari server.`,
+        confirmText: 'Ya, Putuskan Sesi',
+        cancelText: 'Batal',
+        type: 'danger'
+      });
+
+      if (confirmDelete) {
         if (socket) {
           socket.emit('delete-session', { sessionId: id });
           showToast('Sistem', `Memutus koneksi sesi: ${id}`, 'info');
@@ -2417,7 +2545,15 @@ print(response.json())`;
     }
 
     async function revokeApiKey(keyId) {
-      if (!confirm('Apakah Anda yakin ingin mencabut (revoke) API Key ini? Aplikasi luar yang menggunakan key ini akan kehilangan akses secara instan.')) {
+      const confirmRevoke = await showCustomConfirm({
+        title: 'Cabut API Key Integrasi',
+        message: 'Apakah Anda yakin ingin mencabut (revoke) API Key ini? Aplikasi luar yang menggunakan key ini akan kehilangan akses secara instan.',
+        confirmText: 'Ya, Cabut Key',
+        cancelText: 'Batal',
+        type: 'danger'
+      });
+
+      if (!confirmRevoke) {
         return;
       }
 

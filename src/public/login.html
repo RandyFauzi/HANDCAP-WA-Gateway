@@ -633,6 +633,47 @@
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+
+    /* Modal Backdrop & Card Styling */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+    
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    
+    .modal-card {
+      background-color: var(--input-focus-bg);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 25px 50px -12px rgba(15, 23, 42, 0.15);
+      width: 90%;
+      max-width: 420px;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .modal-backdrop.active .modal-card {
+      transform: scale(1);
+    }
   </style>
 </head>
 <body> <!-- Defaults to Light Mode as per user request -->
@@ -699,7 +740,7 @@
             <input type="checkbox" id="remember">
             <span>Ingat saya untuk 30 hari</span>
           </label>
-          <a href="#" class="forgot-password-link" onclick="alert('Fitur pemulihan sandi sedang dalam pengembangan.')">Lupa sandi?</a>
+          <a href="#" class="forgot-password-link" onclick="showCustomAlert('Lupa Sandi', 'Fitur pemulihan sandi sedang dalam pengembangan.')">Lupa sandi?</a>
         </div>
 
         <button type="submit" id="btn-submit">
@@ -715,7 +756,7 @@
       </div>
 
       <!-- Social login button (visual ornament) -->
-      <button type="button" class="social-btn" onclick="alert('Masuk Google sedang dalam pengembangan.')">
+      <button type="button" class="social-btn" onclick="showCustomAlert('Masuk Google', 'Masuk Google sedang dalam pengembangan.')">
         <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ523FgJW1F6IQRSisQdyN2ybgmZ2mvGqaWDoPDyLqwoRX04V-vRC1zWWcTmcUVs6o32cHsoH55s1Tjf0beQ5CO7bE1g0vj4h7Mz_Zc10NLguddT4T3pvEdlzhiXYRisYU9Y1f-NzvubULBJzztJ_XpDTHNxQEiv01cSDeowG15E-M2IgsRkZca_CMstq1XuUj7FQWlDEgaFvp1lCf8nTbvo3GzznbSFhmEC2wH69msEb8FMsAe6_o-YDOo2g6j-cFGd3y6kCj" alt="Google Logo">
         <span>Lanjutkan dengan Google</span>
       </button>
@@ -728,9 +769,37 @@
     </div>
   </div>
 
+  <!-- Custom Popup Alert Modal -->
+  <div class="modal-backdrop" id="custom-popup-modal">
+    <div class="modal-card">
+      <div style="padding: 2.25rem 1.75rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 1.25rem;">
+        <div id="popup-icon-container" style="width: 56px; height: 56px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--primary-light); color: var(--primary);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; width: 100%;">
+          <h4 id="popup-title" style="font-size: 1.15rem; font-weight: 800; color: var(--text-title); margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;">Info</h4>
+          <p id="popup-message" style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin: 0; font-family: 'Plus Jakarta Sans', sans-serif;">Fitur sedang dalam pengembangan.</p>
+        </div>
+      </div>
+      <div style="padding: 1rem 1.5rem; background: rgba(0,0,0,0.02); border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end;">
+        <button onclick="closeCustomAlert()" style="padding: 0.55rem 1.5rem; font-size: 0.8rem; border-radius: 8px; font-weight: 700; color: white; background-color: var(--primary);">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Initialize Lucide Icons
     lucide.createIcons();
+
+    function showCustomAlert(title, message) {
+      document.getElementById('popup-title').innerText = title;
+      document.getElementById('popup-message').innerText = message;
+      document.getElementById('custom-popup-modal').classList.add('active');
+    }
+
+    function closeCustomAlert() {
+      document.getElementById('custom-popup-modal').classList.remove('active');
+    }
 
     // Check if user is already logged in
     if (localStorage.getItem('handcap_token')) {
