@@ -181,7 +181,7 @@ if (hasDbConfig) {
 
       // Migration: For any existing API Keys where key_value is NULL,
       // generate a new API key so the user can show/hide and copy it.
-      const [nullKeys] = await pool.query("SELECT id FROM api_keys WHERE key_value IS NULL");
+      const [nullKeys] = await pool.query("SELECT id FROM api_keys WHERE key_value IS NULL OR key_value = '' OR key_value = 'null'");
       if (nullKeys.length > 0) {
         console.log(`[Database Migration] Found ${nullKeys.length} API keys without plain-text values. Regenerating...`);
         for (const k of nullKeys) {
