@@ -22,6 +22,9 @@
   "devDependencies": {
     "nodemon": "^3.1.0"
   },
+  "overrides": {
+    "ws": "^8.21.0"
+  },
   "keywords": [
     "whatsapp",
     "gateway",
