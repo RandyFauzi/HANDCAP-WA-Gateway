@@ -136,16 +136,18 @@ router.post('/send-message', authenticate, messageRateLimiter, async (req, res) 
     // Send message via queue (using user-prefixed sessionId)
     const result = await sessionManager.sendMessage(sessionId, cleanPhone, message, priorityLevel);
     const msgId = result?.key?.id || 'UNKNOWN';
+    const isQueued = result?.status === 'queued';
 
     // Log details to Database
-    await db.logMessage(sessionId, msgId, cleanPhone, message, 'sent');
+    await db.logMessage(sessionId, msgId, cleanPhone, message, isQueued ? 'queued' : 'sent');
 
     return res.status(200).json({
       status: 'success',
-      message: 'Message sent successfully.',
+      message: isQueued ? 'Message queued. Will be sent when connection is open.' : 'Message sent successfully.',
       data: {
         id: msgId,
-        recipient: cleanPhone
+        recipient: cleanPhone,
+        status: isQueued ? 'queued' : 'sent'
       }
     });
   } catch (err) {

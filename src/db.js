@@ -230,6 +230,26 @@ async function logMessage(sessionId, msgId, recipient, message, status = 'sent')
   }
 }
 
+/**
+ * Update message log status and ID (e.g. from queued to sent)
+ */
+async function updateMessageStatus(fakeMsgId, realMsgId, status) {
+  if (!pool || !isConnected) {
+    console.log(`[No-DB Log Update] FakeId: ${fakeMsgId} -> RealId: ${realMsgId} | Status: ${status}`);
+    return null;
+  }
+  try {
+    await pool.query(
+      'UPDATE sent_messages SET msg_id = ?, status = ? WHERE msg_id = ?',
+      [realMsgId, status, fakeMsgId]
+    );
+    return true;
+  } catch (err) {
+    console.error('Failed to update message status in database:', err.message);
+    return null;
+  }
+}
+
 // =========================================================
 // CAMPAIGNS
 // =========================================================
@@ -720,6 +740,7 @@ async function verifyApiKey(rawKey) {
 
 module.exports = {
   logMessage,
+  updateMessageStatus,
   createCampaign,
   updateCampaignStatus,
   updateRecipientStatus,

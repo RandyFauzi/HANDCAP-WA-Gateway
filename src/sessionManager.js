@@ -25,6 +25,52 @@ if (!fs.existsSync(SESSION_DIR)) {
 const sessions = new Map();
 
 /**
+ * Trigger webhook notification to ONFIX on logout
+ */
+function sendWebhookNotification(sessionId, status) {
+  const webhookUrl = process.env.ONFIX_WEBHOOK_URL;
+  if (!webhookUrl) return;
+
+  const url = require('url');
+  let parsedUrl;
+  try {
+    parsedUrl = new url.URL(webhookUrl);
+  } catch (e) {
+    console.error(`[Webhook: ${sessionId}] Invalid ONFIX_WEBHOOK_URL:`, webhookUrl);
+    return;
+  }
+
+  const data = JSON.stringify({
+    event: 'session_update',
+    sessionId: sessionId.replace(/^\d+_/, ''),
+    status: status,
+    message: `WhatsApp session '${sessionId.replace(/^\d+_/, '')}' has been logged out and requires scanning QR code.`,
+    timestamp: new Date().toISOString()
+  });
+
+  const protocol = parsedUrl.protocol === 'https:' ? require('https') : require('http');
+  const req = protocol.request({
+    hostname: parsedUrl.hostname,
+    port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+    path: parsedUrl.pathname + parsedUrl.search,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Length': Buffer.byteLength(data)
+    }
+  }, (res) => {
+    console.log(`[Webhook: ${sessionId}] Notification sent to ONFIX. Status code: ${res.statusCode}`);
+  });
+
+  req.on('error', (err) => {
+    console.error(`[Webhook: ${sessionId}] Failed to send notification to ONFIX:`, err.message);
+  });
+
+  req.write(data);
+  req.end();
+}
+
+/**
  * Get the status of all active sessions
  * @returns {Array<{id: string, status: string, qr: string|null}>}
  */
@@ -97,6 +143,12 @@ async function initSession(sessionId, io = null, forceRestart = false) {
     browser: ['HANDCAP API Gateway', 'Chrome', '1.0.0']
   });
 
+  // Clear any existing ping interval to prevent leaks
+  if (sessions.has(sessionId)) {
+    const prev = sessions.get(sessionId);
+    if (prev.pingInterval) clearInterval(prev.pingInterval);
+  }
+
   const sessionData = {
     id: sessionId,
     socket,
@@ -105,6 +157,7 @@ async function initSession(sessionId, io = null, forceRestart = false) {
     reconnectCount: sessions.get(sessionId)?.reconnectCount || 0,
     queue: [],
     isProcessing: false,
+    pingInterval: null,
     io
   };
 
@@ -199,20 +252,67 @@ async function initSession(sessionId, io = null, forceRestart = false) {
       sessionData.reconnectCount = 0;
       emitStatus('connected');
       console.log(`[SessionManager: ${sessionId}] Connected successfully!`);
+
+      // Start keep-alive ping frame interval
+      if (!sessionData.pingInterval) {
+        sessionData.pingInterval = setInterval(async () => {
+          if (sessionData.status === 'connected') {
+            try {
+              console.log(`[SessionManager: ${sessionId}] Sending keep-alive ping...`);
+              if (typeof socket.sendPing === 'function') {
+                await socket.sendPing();
+              } else {
+                await socket.query({
+                  tag: 'iq',
+                  attrs: {
+                    to: '@s.whatsapp.net',
+                    type: 'get',
+                    xmlns: 'w:g2',
+                  },
+                  content: []
+                });
+              }
+            } catch (err) {
+              console.warn(`[SessionManager: ${sessionId}] Keep-alive ping failed:`, err.message);
+            }
+          }
+        }, 30000);
+      }
+
+      // Process any queued messages
+      processQueue(sessionId).catch(err => {
+        console.error(`[SessionManager: ${sessionId}] Queue processing error on connection open:`, err.message);
+      });
     }
 
     if (connection === 'close') {
       sessionData.qr = null;
+      if (sessionData.pingInterval) {
+        clearInterval(sessionData.pingInterval);
+        sessionData.pingInterval = null;
+      }
+
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+      // Reconnect unless it's explicitly logged out by user or device mismatch
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut || 
+                         statusCode === 401 || 
+                         statusCode === 403 || 
+                         statusCode === 419;
+      const shouldReconnect = !isLoggedOut;
 
       console.log(`[SessionManager: ${sessionId}] Connection closed. StatusCode: ${statusCode}. ShouldReconnect: ${shouldReconnect}`);
 
       if (shouldReconnect) {
         emitStatus('connecting');
-        // Exponential backoff up to 15 seconds
-        const delay = Math.min(15000, Math.pow(2, sessionData.reconnectCount) * 1000);
-        sessionData.reconnectCount++;
+
+        // Immediate reconnect if requested by Baileys, otherwise apply back-off delay
+        let delay = 1000;
+        if (statusCode !== DisconnectReason.restartRequired) {
+          // Scale delay: 5s, 10s, 20s, up to 60s
+          delay = Math.min(60000, Math.pow(2, sessionData.reconnectCount) * 5000);
+          sessionData.reconnectCount++;
+        }
+        
         console.log(`[SessionManager: ${sessionId}] Reconnecting in ${delay}ms (Attempt #${sessionData.reconnectCount})`);
 
         setTimeout(async () => {
@@ -226,6 +326,14 @@ async function initSession(sessionId, io = null, forceRestart = false) {
         // Session was logged out/invalidated
         emitStatus('disconnected');
         console.log(`[SessionManager: ${sessionId}] Logged out. Clearing credentials.`);
+        
+        // Trigger ONFIX webhook alert
+        try {
+          sendWebhookNotification(sessionId, 'logged_out');
+        } catch (webhookErr) {
+          console.error(`[SessionManager: ${sessionId}] Webhook trigger failed:`, webhookErr.message);
+        }
+
         sessions.delete(sessionId);
         
         // Securely erase the credentials folder
@@ -267,14 +375,24 @@ async function processQueue(sessionId) {
   const session = sessions.get(sessionId);
   if (!session) return;
 
+  if (session.status !== 'connected') {
+    console.log(`[SessionManager: ${sessionId}] Cannot process queue because session status is '${session.status}'.`);
+    return;
+  }
+
   if (session.isProcessing) return;
   session.isProcessing = true;
 
   console.log(`[SessionManager: ${sessionId}] Started processing message queue (${session.queue.length} in queue).`);
 
   while (session.queue.length > 0) {
+    if (session.status !== 'connected') {
+      console.log(`[SessionManager: ${sessionId}] Pausing queue processing - session disconnected.`);
+      break;
+    }
+
     const task = session.queue.shift();
-    const { cleanPhone, message, priority, resolve, reject } = task;
+    const { cleanPhone, message, priority, resolve, reject, fakeMsgId } = task;
 
     try {
       // 1. Simulate human typing (Presence update composing)
@@ -300,6 +418,12 @@ async function processQueue(sessionId) {
       const phoneOnly = cleanPhone.split('@')[0];
       await db.saveChatMessage(sessionId, sentMessage.key.id, phoneOnly, message, true);
 
+      // Update log database if it was queued during connecting
+      if (fakeMsgId) {
+        console.log(`[SessionManager: ${sessionId}] Updating database status for queued message: ${fakeMsgId} -> ${sentMessage.key.id}`);
+        await db.updateMessageStatus(fakeMsgId, sentMessage.key.id, 'sent');
+      }
+
       // Broadcast outgoing message to update the chat room UI immediately
       if (session.io) {
         const userId = sessionId.split('_')[0];
@@ -314,7 +438,9 @@ async function processQueue(sessionId) {
         });
       }
 
-      resolve(sentMessage);
+      if (!task.resolved) {
+        resolve(sentMessage);
+      }
 
     } catch (err) {
       console.error(`[SessionManager: ${sessionId}] Failed to send queued message to ${cleanPhone}:`, err.message);
@@ -322,7 +448,15 @@ async function processQueue(sessionId) {
       try {
         await session.socket.sendPresenceUpdate('paused', cleanPhone);
       } catch (e) {}
-      reject(err);
+
+      if (fakeMsgId) {
+        const db = require('./db');
+        await db.updateMessageStatus(fakeMsgId, 'FAILED_' + Date.now(), 'failed');
+      }
+
+      if (!task.resolved) {
+        reject(err);
+      }
     }
 
     // 3. Post-send cool-down delay to prevent Meta spam detection (Banned prevention)
@@ -357,7 +491,8 @@ async function sendMessage(sessionId, phone, message, priority = 'normal') {
     throw new Error(`Session '${sessionId}' not found. Please connect the session first.`);
   }
 
-  if (session.status !== 'connected') {
+  const isConnecting = session.status === 'connecting' || session.status === 'qr';
+  if (session.status !== 'connected' && !isConnecting) {
     throw new Error(`Session '${sessionId}' is not connected. Current status: ${session.status}`);
   }
 
@@ -367,27 +502,38 @@ async function sendMessage(sessionId, phone, message, priority = 'normal') {
 
   // Push message to the queue to prevent simultaneous spamming (Anti-Ban strategy)
   return new Promise((resolve, reject) => {
+    const fakeMsgId = isConnecting ? 'QUEUED_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) : null;
     const queueItem = {
       cleanPhone,
       message,
       priority,
       resolve,
-      reject
+      reject,
+      fakeMsgId,
+      resolved: false
     };
 
     if (priority === 'high') {
-      // Put high priority OTP messages at the beginning of the queue to send instantly
       session.queue.unshift(queueItem);
       console.log(`[SessionManager: ${sessionId}] High-priority message queued at front for ${formattedPhone}`);
     } else {
       session.queue.push(queueItem);
       console.log(`[SessionManager: ${sessionId}] Normal-priority message queued for ${formattedPhone}`);
     }
-    
-    // Trigger queue processing (non-blocking trigger)
-    processQueue(sessionId).catch(err => {
-      console.error(`[SessionManager: ${sessionId}] Queue error:`, err.message);
-    });
+
+    if (session.status === 'connected') {
+      processQueue(sessionId).catch(err => {
+        console.error(`[SessionManager: ${sessionId}] Queue error:`, err.message);
+      });
+    } else {
+      // Resolve immediately for background queued messages so the ONFIX API request doesn't block or timeout
+      console.log(`[SessionManager: ${sessionId}] Session is ${session.status}. Resolving API call with queued status.`);
+      queueItem.resolved = true;
+      resolve({
+        key: { id: fakeMsgId },
+        status: 'queued'
+      });
+    }
   });
 }
 
@@ -399,6 +545,10 @@ async function sendMessage(sessionId, phone, message, priority = 'normal') {
 async function deleteSession(sessionId, io = null) {
   const session = sessions.get(sessionId);
   if (session) {
+    if (session.pingInterval) {
+      clearInterval(session.pingInterval);
+      session.pingInterval = null;
+    }
     try {
       await session.socket.logout();
     } catch (e) {
