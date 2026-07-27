@@ -28,6 +28,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Save Socket.io reference in express app instance
 app.set('socketio', io);
 
+// Register global io in sessionManager — persists across all reconnects
+sessionManager.setGlobalIo(io);
+
 // Mount API routes
 app.use('/api/v1', apiRoutes);
 

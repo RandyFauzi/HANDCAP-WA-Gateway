@@ -24,6 +24,17 @@ if (!fs.existsSync(SESSION_DIR)) {
 // Active sessions registry
 const sessions = new Map();
 
+// Global Socket.io reference (set once from index.js, persists across reconnects)
+let globalIo = null;
+
+/**
+ * Set the global Socket.io instance — call this once from index.js at startup
+ * @param {object} io - Socket.io server instance
+ */
+function setGlobalIo(ioInstance) {
+  globalIo = ioInstance;
+}
+
 /**
  * Trigger webhook notification to ONFIX on logout
  */
@@ -93,12 +104,15 @@ function getAllSessionsStatus() {
  * @returns {Promise<object>} session details
  */
 async function initSession(sessionId, io = null, forceRestart = false) {
+  // Always prefer global io (persists across reconnects even when no user is logged in)
+  const effectiveIo = globalIo || io;
+
   // If session already exists, manage transition
   if (sessions.has(sessionId) && !forceRestart) {
     const existing = sessions.get(sessionId);
-    if (io) existing.io = io; // update io reference
+    if (effectiveIo) existing.io = effectiveIo;
     if (existing.status === 'connected') {
-      if (io) io.to(sessionId).emit('status', { status: 'connected', sessionId });
+      if (effectiveIo) effectiveIo.to(sessionId).emit('status', { status: 'connected', sessionId });
       return existing;
     }
     if (existing.status === 'connecting' || existing.status === 'qr') {
@@ -155,23 +169,22 @@ async function initSession(sessionId, io = null, forceRestart = false) {
     status: 'connecting',
     qr: null,
     reconnectCount: sessions.get(sessionId)?.reconnectCount || 0,
-    queue: [],
+    queue: sessions.get(sessionId)?.queue || [], // preserve any queued messages
     isProcessing: false,
     pingInterval: null,
-    io
+    io: effectiveIo // use global io, not per-socket io
   };
 
   sessions.set(sessionId, sessionData);
 
-  // Emit status helper
+  // Emit status helper — always uses globalIo so broadcasts work even when no user is in dashboard
   const emitStatus = (status, extra = {}) => {
     sessionData.status = status;
-    if (io) {
+    const ioRef = globalIo || io;
+    if (ioRef) {
       const userId = sessionId.split('_')[0];
       const userSessionId = sessionId.replace(`${userId}_`, '');
-      // Emit to the session-specific channel
-      io.to(sessionId).emit('status', { status, sessionId: userSessionId, ...extra });
-      // Emit user-scoped active sessions list to user's room
+      ioRef.to(sessionId).emit('status', { status, sessionId: userSessionId, ...extra });
       const userSessions = getAllSessionsStatus()
         .filter(s => s.id.startsWith(`${userId}_`))
         .map(s => ({
@@ -179,7 +192,7 @@ async function initSession(sessionId, io = null, forceRestart = false) {
           status: s.status,
           qr: s.qr
         }));
-      io.to(`user_${userId}`).emit('all-sessions', userSessions);
+      ioRef.to(`user_${userId}`).emit('all-sessions', userSessions);
     }
   };
 
@@ -293,10 +306,12 @@ async function initSession(sessionId, io = null, forceRestart = false) {
       }
 
       const statusCode = lastDisconnect?.error?.output?.statusCode;
-      // Reconnect unless it's explicitly logged out by user or device mismatch
-      const isLoggedOut = statusCode === DisconnectReason.loggedOut || 
-                         statusCode === 401 || 
-                         statusCode === 403 || 
+
+      // ONLY treat as permanent logout if WhatsApp explicitly revokes the session
+      // 401 alone is NOT enough — it can be a temporary server-side hiccup or network drop
+      // True logout = DisconnectReason.loggedOut (515) OR 403 (banned) OR 419 (policy violation)
+      const isLoggedOut = statusCode === DisconnectReason.loggedOut ||
+                         statusCode === 403 ||
                          statusCode === 419;
       const shouldReconnect = !isLoggedOut;
 
@@ -305,29 +320,32 @@ async function initSession(sessionId, io = null, forceRestart = false) {
       if (shouldReconnect) {
         emitStatus('connecting');
 
-        // Immediate reconnect if requested by Baileys, otherwise apply back-off delay
+        // Immediate reconnect if Baileys requests restart, otherwise exponential back-off
         let delay = 1000;
         if (statusCode !== DisconnectReason.restartRequired) {
-          // Scale delay: 5s, 10s, 20s, up to 60s
+          // Scale delay: 5s → 10s → 20s → 40s → max 60s
           delay = Math.min(60000, Math.pow(2, sessionData.reconnectCount) * 5000);
           sessionData.reconnectCount++;
+        } else {
+          // restartRequired = immediate reconnect, reset counter
+          sessionData.reconnectCount = 0;
         }
-        
-        console.log(`[SessionManager: ${sessionId}] Reconnecting in ${delay}ms (Attempt #${sessionData.reconnectCount})`);
+
+        console.log(`[SessionManager: ${sessionId}] Reconnecting in ${delay}ms (Attempt #${sessionData.reconnectCount})...`);
 
         setTimeout(async () => {
           try {
-            await initSession(sessionId, io, true);
+            // Always use globalIo so reconnect works even if original socket is gone
+            await initSession(sessionId, globalIo || io, true);
           } catch (err) {
             console.error(`[SessionManager: ${sessionId}] Auto-reconnect failed:`, err.message);
           }
         }, delay);
       } else {
-        // Session was logged out/invalidated
+        // Truly logged out — clear credentials and notify
         emitStatus('disconnected');
-        console.log(`[SessionManager: ${sessionId}] Logged out. Clearing credentials.`);
-        
-        // Trigger ONFIX webhook alert
+        console.log(`[SessionManager: ${sessionId}] Permanently logged out (status ${statusCode}). Clearing credentials.`);
+
         try {
           sendWebhookNotification(sessionId, 'logged_out');
         } catch (webhookErr) {
@@ -335,8 +353,8 @@ async function initSession(sessionId, io = null, forceRestart = false) {
         }
 
         sessions.delete(sessionId);
-        
-        // Securely erase the credentials folder
+
+        // Only delete credentials on true logout (403/419/515)
         try {
           fs.rmSync(sessionPath, { recursive: true, force: true });
         } catch (err) {
@@ -632,5 +650,6 @@ module.exports = {
   autoLoadSessions,
   getAllSessionsStatus,
   formatPhoneNumber,
+  setGlobalIo,
   sessions
 };
