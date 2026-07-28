@@ -1,0 +1,41 @@
+name: Deploy to Hostinger via SSH
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Deploy files via SSH/SFTP
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT || 22 }}
+          source: "src/,package.json,package-lock.json,update.sh,deploy.sh,.htaccess"
+          target: "~/domains/handcap-by.autogrowthid.site/public_html"
+          overwrite: true
+
+      - name: Install dependencies and restart app
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USERNAME }}
+          key: ${{ secrets.HOSTINGER_SSH_KEY }}
+          port: ${{ secrets.HOSTINGER_PORT || 22 }}
+          script: |
+            cd ~/domains/handcap-by.autogrowthid.site/public_html
+            # Muat NVM agar node/npm dikenali
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            # Install package & restart PM2
+            npm install --omit=dev --silent
+            pm2 restart handcap || pm2 start src/index.js --name handcap
+            pm2 save
