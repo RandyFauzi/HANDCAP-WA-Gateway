@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password — HANDCAP WA Gateway</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --bg-body: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #334155;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --radius: 12px;
+      --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg-body);
+      color: var(--text-main);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    .reset-container {
+      width: 100%;
+      max-width: 440px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 2.25rem 2.5rem;
+    }
+
+    .logo-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.75rem;
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--primary);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .logo-icon svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffffff;
+    }
+
+    .logo-text {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+
+    .title {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 0.45rem;
+      letter-spacing: -0.5px;
+    }
+
+    .desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+      margin-bottom: 1.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    .label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 0.4rem;
+    }
+
+    .input {
+      width: 100%;
+      padding: 0.7rem 0.9rem;
+      font-size: 0.85rem;
+      font-family: inherit;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      outline: none;
+      transition: all 0.15s;
+    }
+
+    .input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      font-family: inherit;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      transition: background-color 0.15s;
+    }
+
+    .btn-submit:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-submit:disabled {
+      background: #94a3b8;
+      cursor: not-allowed;
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+      line-height: 1.4;
+      display: none;
+    }
+
+    .alert-success {
+      background: #dcfce7;
+      border: 1px solid #bbf7d0;
+      color: var(--success);
+    }
+
+    .alert-danger {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: var(--danger);
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.8rem;
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-top-color: #ffffff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="reset-container">
+    <div class="logo-wrapper">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </div>
+      <span class="logo-text">HANDCAP</span>
+    </div>
+
+    <h1 class="title">Reset Password</h1>
+    <p class="desc">Masukkan password baru Anda di bawah ini untuk mengamankan kembali akun Anda.</p>
+
+    <div id="alert-box" class="alert"></div>
+
+    <form id="reset-form" onsubmit="handleResetPassword(event)">
+      <div class="form-group">
+        <label class="label" for="password">PASSWORD BARU</label>
+        <input class="input" type="password" id="password" required minlength="6" placeholder="Minimal 6 karakter">
+      </div>
+      <div class="form-group">
+        <label class="label" for="confirm-password">KONFIRMASI PASSWORD</label>
+        <input class="input" type="password" id="confirm-password" required minlength="6" placeholder="Ulangi password baru">
+      </div>
+
+      <button class="btn-submit" type="submit" id="submit-btn">
+        <span>Simpan Password Baru</span>
+      </button>
+    </form>
+
+    <a href="/login.html" class="back-link">Kembali ke Halaman Login</a>
+  </div>
+
+  <script>
+    // Get token from URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+
+    // If token is missing, block form submission
+    const alertBox = document.getElementById('alert-box');
+    const form = document.getElementById('reset-form');
+    const submitBtn = document.getElementById('submit-btn');
+
+    if (!token) {
+      alertBox.className = 'alert alert-danger';
+      alertBox.style.display = 'block';
+      alertBox.innerText = 'Token pengubahan password tidak valid atau tidak ditemukan di URL.';
+      form.style.display = 'none';
+    }
+
+    async function handleResetPassword(e) {
+      e.preventDefault();
+
+      const newPassword = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm-password').value;
+
+      alertBox.className = 'alert';
+      alertBox.style.display = 'none';
+
+      if (newPassword !== confirmPassword) {
+        alertBox.className = 'alert alert-danger';
+        alertBox.style.display = 'block';
+        alertBox.innerText = 'Password dan konfirmasi password tidak cocok.';
+        return;
+      }
+
+      // Loading state
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<div class="spinner"></div> <span>Menyimpan...</span>';
+
+      try {
+        const response = await fetch('/api/v1/auth/reset-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ token, newPassword })
+        });
+
+        const res = await response.json();
+
+        if (response.ok && res.status === 'success') {
+          alertBox.className = 'alert alert-success';
+          alertBox.style.display = 'block';
+          alertBox.innerText = res.message;
+          form.reset();
+          // Disable form to prevent resubmission
+          form.style.display = 'none';
+        } else {
+          alertBox.className = 'alert alert-danger';
+          alertBox.style.display = 'block';
+          alertBox.innerText = res.message || 'Gagal mengubah password.';
+        }
+      } catch (err) {
+        alertBox.className = 'alert alert-danger';
+        alertBox.style.display = 'block';
+        alertBox.innerText = 'Gagal terhubung ke server. Silakan coba lagi.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<span>Simpan Password Baru</span>';
+      }
+    }
+  </script>
+</body>
+</html>

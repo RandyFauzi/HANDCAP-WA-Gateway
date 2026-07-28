@@ -77,9 +77,29 @@ if (hasDbConfig) {
           id INT AUTO_INCREMENT PRIMARY KEY,
           email VARCHAR(100) UNIQUE NOT NULL,
           password_hash VARCHAR(255) NOT NULL,
+          phone VARCHAR(20) NULL,
+          reset_token VARCHAR(255) NULL,
+          reset_expires TIMESTAMP NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      // Migration: Add new columns to users table if they do not exist
+      try {
+        const [phoneCol] = await pool.query("SHOW COLUMNS FROM users LIKE 'phone'");
+        if (phoneCol.length === 0) {
+          await pool.query("ALTER TABLE users ADD COLUMN phone VARCHAR(20) NULL AFTER password_hash");
+          console.log("Migration: Added phone column to users table.");
+        }
+        const [tokenCol] = await pool.query("SHOW COLUMNS FROM users LIKE 'reset_token'");
+        if (tokenCol.length === 0) {
+          await pool.query("ALTER TABLE users ADD COLUMN reset_token VARCHAR(255) NULL AFTER phone");
+          await pool.query("ALTER TABLE users ADD COLUMN reset_expires TIMESTAMP NULL AFTER reset_token");
+          console.log("Migration: Added reset_token and reset_expires columns to users table.");
+        }
+      } catch (err) {
+        console.warn("Migration warning: failed to add users helper columns:", err.message);
+      }
 
       await pool.query(`
         CREATE TABLE IF NOT EXISTS api_keys (
@@ -162,13 +182,14 @@ if (hasDbConfig) {
 
       // Seed main admin user if not exists
       const email = 'randyfauzi24@gmail.com';
+      const defaultPhone = '08123456789'; // Default sample phone, user can change later
       const [rows] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
       if (rows.length === 0) {
         const passwordHash = bcrypt.hashSync('password', 10);
-        await pool.query('INSERT INTO users (email, password_hash) VALUES (?, ?)', [email, passwordHash]);
+        await pool.query('INSERT INTO users (email, password_hash, phone) VALUES (?, ?, ?)', [email, passwordHash, defaultPhone]);
         const [newUser] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
         const userId = newUser[0].id;
-        console.log(`[Database Seed] Main user ${email} seeded successfully.`);
+        console.log(`[Database Seed] Main user ${email} seeded successfully with phone.`);
 
         const defaultApiKey = 'supersecretapikey';
         const defaultHash = crypto.createHash('sha256').update(defaultApiKey).digest('hex');
@@ -177,6 +198,9 @@ if (hasDbConfig) {
           [userId, defaultHash, defaultApiKey, defaultApiKey, 'Default API Key']
         );
         console.log(`[Database Seed] Default API Key seeded for ${email}.`);
+      } else {
+        // Migration: If main admin exists but phone is NULL, update it
+        await pool.query('UPDATE users SET phone = COALESCE(phone, ?) WHERE email = ?', [defaultPhone, email]);
       }
 
       // Migration: For any existing API Keys where key_value is NULL,
@@ -738,6 +762,65 @@ async function verifyApiKey(rawKey) {
   }
 }
 
+async function setResetToken(email, token, expires) {
+  if (!pool || !isConnected) {
+    const user = memoryUsers.find(u => u.email === email);
+    if (!user) return false;
+    user.reset_token = token;
+    user.reset_expires = expires;
+    return true;
+  }
+  try {
+    const [res] = await pool.query(
+      'UPDATE users SET reset_token = ?, reset_expires = ? WHERE email = ?',
+      [token, expires, email]
+    );
+    return res.affectedRows > 0;
+  } catch (err) {
+    console.error('Failed to set reset token:', err.message);
+    return false;
+  }
+}
+
+async function getUserByResetToken(token) {
+  if (!pool || !isConnected) {
+    const user = memoryUsers.find(u => u.reset_token === token && u.reset_expires > new Date());
+    return user || null;
+  }
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM users WHERE reset_token = ? AND reset_expires > NOW()',
+      [token]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    console.error('Failed to get user by reset token:', err.message);
+    return null;
+  }
+}
+
+async function resetUserPassword(userId, passwordHash) {
+  const uid = parseInt(userId);
+  if (!pool || !isConnected) {
+    const user = memoryUsers.find(u => u.id === uid);
+    if (!user) return false;
+    user.password_hash = passwordHash;
+    user.reset_token = null;
+    user.reset_expires = null;
+    return true;
+  }
+  try {
+    const [res] = await pool.query(
+      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+      [passwordHash, uid]
+    );
+    return res.affectedRows > 0;
+  } catch (err) {
+    console.error('Failed to reset user password:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   logMessage,
   updateMessageStatus,
@@ -760,5 +843,8 @@ module.exports = {
   createApiKey,
   deleteApiKey,
   verifyApiKey,
+  setResetToken,
+  getUserByResetToken,
+  resetUserPassword,
   pool
 };

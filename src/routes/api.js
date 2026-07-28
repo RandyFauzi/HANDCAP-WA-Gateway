@@ -602,6 +602,131 @@ router.post('/auth/login', async (req, res) => {
 });
 
 /**
+ * POST /api/v1/auth/forgot-password
+ * Request password reset token and send via WhatsApp
+ */
+router.post('/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Email is required.'
+    });
+  }
+
+  try {
+    const user = await db.getUserByEmail(email);
+    if (!user) {
+      // Return 200 for security reasons (so attackers cannot enumerate emails)
+      return res.status(200).json({
+        status: 'success',
+        message: 'Jika email terdaftar, instruksi reset password telah dikirim ke nomor WhatsApp Anda.'
+      });
+    }
+
+    if (!user.phone) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Gagal mengirim instruksi. Akun Anda belum mendaftarkan nomor telepon (WhatsApp).'
+      });
+    }
+
+    // Generate random 32-byte hex token
+    const crypto = require('crypto');
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes validity
+
+    const success = await db.setResetToken(email, token, expires);
+    if (!success) {
+      throw new Error('Gagal menyimpan token reset password.');
+    }
+
+    // Get active session ID for sending (e.g. 1_default or matching user)
+    // Find the first connected session for this user
+    let sendSessionId = `${user.id}_default`;
+    const userSessions = sessionManager.getAllSessionsStatus()
+      .filter(s => s.id.startsWith(`${user.id}_`));
+    const connectedSession = userSessions.find(s => s.status === 'connected');
+    if (connectedSession) {
+      sendSessionId = connectedSession.id;
+    } else if (userSessions.length > 0) {
+      sendSessionId = userSessions[0].id;
+    }
+
+    // Build reset URL using host header (supports localhost or public domain dynamically)
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers.host;
+    const resetUrl = `${protocol}://${host}/reset.html?token=${token}`;
+
+    const textMessage = `*HANDCAP WhatsApp Gateway*\n\nAnda menerima pesan ini karena Anda (atau seseorang) meminta pengaturan ulang password akun Anda.\n\nSilakan klik tautan di bawah ini untuk mengatur password baru Anda:\n\n👉 ${resetUrl}\n\nTautan ini hanya berlaku selama 15 menit. Jika Anda tidak meminta ini, abaikan pesan ini.`;
+
+    // Send the message via SessionManager
+    await sessionManager.sendMessage(sendSessionId, user.phone, textMessage, 'high');
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Jika email terdaftar, instruksi reset password telah dikirim ke nomor WhatsApp Anda.'
+    });
+
+  } catch (err) {
+    console.error('[Forgot Password Error]:', err.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Terjadi kesalahan sistem saat mengirim link reset password.'
+    });
+  }
+});
+
+/**
+ * POST /api/v1/auth/reset-password
+ * Reset user password using token
+ */
+router.post('/auth/reset-password', async (req, res) => {
+  const { token, newPassword } = req.body;
+  if (!token || !newPassword) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Token dan Password Baru wajib diisi.'
+    });
+  }
+
+  if (newPassword.length < 6) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Password baru minimal harus terdiri dari 6 karakter.'
+    });
+  }
+
+  try {
+    const user = await db.getUserByResetToken(token);
+    if (!user) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Token reset password tidak valid atau telah kedaluwarsa.'
+      });
+    }
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10);
+    const success = await db.resetUserPassword(user.id, passwordHash);
+    if (!success) {
+      throw new Error('Gagal memperbarui password di database.');
+    }
+
+    return res.status(200).json({
+      status: 'success',
+      message: 'Password Anda berhasil diperbarui. Silakan login kembali dengan password baru Anda.'
+    });
+
+  } catch (err) {
+    console.error('[Reset Password Error]:', err.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Terjadi kesalahan sistem saat menyetel ulang password.'
+    });
+  }
+});
+
+/**
  * GET /api/v1/auth/me
  * Retrieves active user details
  */
