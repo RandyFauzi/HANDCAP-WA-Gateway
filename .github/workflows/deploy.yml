@@ -17,10 +17,10 @@ jobs:
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           username: ${{ secrets.HOSTINGER_USERNAME }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT || 22 }}
-          source: "src/,package.json,package-lock.json,update.sh,deploy.sh,.htaccess"
-          target: "~/domains/handcap-by.autogrowthid.site/public_html"
+          password: ${{ secrets.HOSTINGER_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_PORT }}
+          source: "src/,package.json,package-lock.json,update.sh,deploy.sh"
+          target: "~/domains/handcap-by.autogrowthid.site/nodejs"
           overwrite: true
 
       - name: Install dependencies and restart app
@@ -28,10 +28,10 @@ jobs:
         with:
           host: ${{ secrets.HOSTINGER_HOST }}
           username: ${{ secrets.HOSTINGER_USERNAME }}
-          key: ${{ secrets.HOSTINGER_SSH_KEY }}
-          port: ${{ secrets.HOSTINGER_PORT || 22 }}
+          password: ${{ secrets.HOSTINGER_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_PORT }}
           script: |
-            cd ~/domains/handcap-by.autogrowthid.site/public_html
+            cd ~/domains/handcap-by.autogrowthid.site/nodejs
             # Muat NVM agar node/npm dikenali
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
