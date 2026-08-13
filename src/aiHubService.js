@@ -78,17 +78,31 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
   // 4. Start Chat session with history
   // Retrieve previous chat history from DB to give Gemini context of the conversation
   const chatHistory = await db.getChatMessages(sessionId, phone);
-  // Map last 10 messages for context
-  const contents = chatHistory.slice(-10).map(msg => ({
+  
+  // Format history and enforce strictly alternating roles (user -> model -> user)
+  const rawContents = chatHistory.slice(-10).map(msg => ({
     role: msg.from_me === 1 ? 'model' : 'user',
-    parts: [{ text: msg.message }]
+    text: msg.message
   }));
+  rawContents.push({ role: 'user', text: incomingText });
 
-  // Append current message
-  contents.push({
-    role: 'user',
-    parts: [{ text: incomingText }]
-  });
+  const contents = [];
+  for (const item of rawContents) {
+    if (contents.length > 0 && contents[contents.length - 1].role === item.role) {
+      // Squash consecutive messages from the same role
+      contents[contents.length - 1].parts[0].text += `\n${item.text}`;
+    } else {
+      contents.push({
+        role: item.role,
+        parts: [{ text: item.text }]
+      });
+    }
+  }
+
+  // Ensure the very first message is 'user' (Gemini requirement for starting history)
+  if (contents.length > 0 && contents[0].role === 'model') {
+    contents.shift(); // Remove the first model message if it exists without a prior user message
+  }
 
   let result;
   let response;
