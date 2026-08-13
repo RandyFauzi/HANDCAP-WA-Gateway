@@ -9,6 +9,42 @@ const apiRoutes = require('./routes/api');
 const db = require('./db');
 
 const app = express();
+
+global.dbError = null;
+app.use((req, res, next) => {
+  if (global.dbError) {
+    res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Database Error | HANDCAP</title>
+        <style>
+          body { font-family: sans-serif; background-color: #f8d7da; color: #721c24; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 20px; text-align: center; }
+          .container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px; width: 100%; }
+          h1 { margin-top:0; color: #dc3545; }
+          .error-msg { background: #f8f9fa; padding: 15px; border-left: 4px solid #dc3545; text-align: left; font-family: monospace; overflow-x: auto; margin: 20px 0; }
+          p { line-height: 1.6; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>🚨 Database Connection Failed!</h1>
+          <p>The HANDCAP Gateway cannot start because it failed to connect to the MySQL Database on Hostinger.</p>
+          <div class="error-msg">
+            <strong>Error Details:</strong><br><br>
+            ${global.dbError}
+          </div>
+          <p><strong>How to fix:</strong></p>
+          <p style="text-align:left;">1. Open Hostinger File Manager.<br>2. Edit the <code>.env</code> file in this folder.<br>3. Make sure <code>DB_HOST</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, and <code>DB_NAME</code> are perfectly correct according to your Hostinger MySQL database.<br>4. Save the file and restart the server (or just make an empty commit).</p>
+        </div>
+      </body>
+      </html>
+    `);
+    return;
+  }
+  next();
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -138,15 +174,27 @@ io.on('connection', (socket) => {
 
 // Start the HTTP and WebSocket Server
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`===================================================`);
-  console.log(`  HANDCAP WhatsApp API Gateway listening on port ${PORT}`);
-  console.log(`  Dashboard URL: http://localhost:${PORT}`);
-  console.log(`===================================================`);
 
-  // Auto-load pre-existing WhatsApp sessions on startup (non-blocking)
-  sessionManager.autoLoadSessions(io);
-});
+(async () => {
+  try {
+    await db.connectDb();
+  } catch (err) {
+    console.error('FATAL:', err.message);
+    global.dbError = err.message;
+  }
+
+  server.listen(PORT, () => {
+    console.log(`===================================================`);
+    console.log(`  HANDCAP WhatsApp API Gateway listening on port ${PORT}`);
+    console.log(`  Dashboard URL: http://localhost:${PORT}`);
+    console.log(`===================================================`);
+
+    // Auto-load pre-existing WhatsApp sessions on startup (non-blocking)
+    if (!global.dbError) {
+      sessionManager.autoLoadSessions(io);
+    }
+  });
+})();
 
 // Graceful shutdown
 process.on('SIGTERM', () => {

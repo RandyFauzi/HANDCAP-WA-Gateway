@@ -7,50 +7,15 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 let pool = null;
 let isConnected = false;
 
-// In-Memory Fallback Registry (When MySQL is not configured/offline)
-const memoryCampaigns = [];
-const memoryRecipients = [];
-const memoryChatMessages = [];
-const memoryUsers = [];
-const memoryApiKeys = [];
-const memoryMcpRegistry = [];
-let memoryCampaignIdCounter = 1;
-let memoryRecipientIdCounter = 1;
 
-// Seed in-memory database on start
-const seedInMemory = () => {
-  const email = 'randyfauzi24@gmail.com';
-  const passwordHash = bcrypt.hashSync('password', 10);
+// =========================================================
+// INITIALIZATION
+// =========================================================
 
-  // Clean memory arrays first
-  memoryUsers.length = 0;
-  memoryApiKeys.length = 0;
+async function connectDb() {
+  const hasDbConfig = process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME;
+  if (!hasDbConfig) throw new Error("Database configuration (DB_HOST, DB_USER, DB_NAME) is missing in .env.");
 
-  const user = {
-    id: 1,
-    email,
-    password_hash: passwordHash,
-    created_at: new Date()
-  };
-  memoryUsers.push(user);
-
-  const defaultHash = crypto.createHash('sha256').update('supersecretapikey').digest('hex');
-  memoryApiKeys.push({
-    id: 1,
-    user_id: 1,
-    key_hash: defaultHash,
-    key_preview: 'supersecretapikey',
-    name: 'Default API Key',
-    created_at: new Date()
-  });
-  console.log(`[Memory Seed] Main user ${email} and default API Key seeded securely.`);
-};
-seedInMemory();
-
-// Check if database configuration is present
-const hasDbConfig = process.env.DB_HOST && process.env.DB_USER && process.env.DB_NAME;
-
-if (hasDbConfig) {
   pool = mysql.createPool({
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT || '3306'),
@@ -63,16 +28,14 @@ if (hasDbConfig) {
     charset: 'utf8mb4'
   });
 
-  // Test connection and initialize tables
-  (async () => {
-    try {
-      const conn = await pool.getConnection();
-      await conn.ping();
-      conn.release();
-      isConnected = true;
-      console.log('Database (MySQL) connected successfully.');
+  try {
+    const conn = await pool.getConnection();
+    await conn.ping();
+    conn.release();
+    isConnected = true;
+    console.log('Database (MySQL) connected successfully.');
 
-      // Auto-create tables
+    // Auto-create tables
       await pool.query(`
         CREATE TABLE IF NOT EXISTS users (
           id INT AUTO_INCREMENT PRIMARY KEY,
@@ -235,14 +198,12 @@ if (hasDbConfig) {
         console.log("[Database Migration] All old API keys upgraded successfully.");
       }
 
-    } catch (err) {
-      console.warn('Database connection failed. Continuing in offline/no-db mode. Reason:', err.message);
-      pool = null;
-      isConnected = false;
-    }
-  })();
-} else {
-  console.log('Database configuration not found. Gateway will run in no-db mode.');
+    return true;
+  } catch (err) {
+    pool = null;
+    isConnected = false;
+    throw new Error('Database connection failed. Reason: ' + err.message);
+  }
 }
 
 // =========================================================
@@ -253,10 +214,7 @@ if (hasDbConfig) {
  * Log message sending status (Single API Send)
  */
 async function logMessage(sessionId, msgId, recipient, message, status = 'sent') {
-  if (!pool || !isConnected) {
-    console.log(`[No-DB Log] Session: ${sessionId} | MsgId: ${msgId} | To: ${recipient} | Msg: ${message} | Status: ${status}`);
-    return null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
       'INSERT INTO sent_messages (session_id, msg_id, recipient, message, status) VALUES (?, ?, ?, ?, ?)',
@@ -273,10 +231,7 @@ async function logMessage(sessionId, msgId, recipient, message, status = 'sent')
  * Update message log status and ID (e.g. from queued to sent)
  */
 async function updateMessageStatus(fakeMsgId, realMsgId, status) {
-  if (!pool || !isConnected) {
-    console.log(`[No-DB Log Update] FakeId: ${fakeMsgId} -> RealId: ${realMsgId} | Status: ${status}`);
-    return null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
       'UPDATE sent_messages SET msg_id = ?, status = ? WHERE msg_id = ?',
@@ -297,25 +252,7 @@ async function updateMessageStatus(fakeMsgId, realMsgId, status) {
  * Create a new Broadcast Campaign
  */
 async function createCampaign(name, sessionId, message, recipients) {
-  if (!pool || !isConnected) {
-    const campaignId = memoryCampaignIdCounter++;
-    const campaign = {
-      id: campaignId, name, session_id: sessionId, message,
-      total_recipients: recipients.length, sent_count: 0, failed_count: 0,
-      status: 'pending', created_at: new Date()
-    };
-    memoryCampaigns.push(campaign);
-
-    const mappedRecipients = recipients.map(phone => {
-      const rec = {
-        id: memoryRecipientIdCounter++, campaign_id: campaignId, phone,
-        status: 'pending', error_message: null, sent_at: null
-      };
-      memoryRecipients.push(rec);
-      return rec;
-    });
-    return { ...campaign, recipients: mappedRecipients };
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   const conn = await pool.getConnection();
   try {
@@ -354,15 +291,7 @@ async function createCampaign(name, sessionId, message, recipients) {
 async function updateCampaignStatus(campaignId, status, sentCount, failedCount) {
   const id = parseInt(campaignId);
 
-  if (!pool || !isConnected) {
-    const c = memoryCampaigns.find(x => x.id === id);
-    if (c) {
-      if (status) c.status = status;
-      if (sentCount !== undefined) c.sent_count = sentCount;
-      if (failedCount !== undefined) c.failed_count = failedCount;
-    }
-    return c;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     await pool.query(
@@ -383,15 +312,7 @@ async function updateCampaignStatus(campaignId, status, sentCount, failedCount) 
 async function updateRecipientStatus(campaignId, phone, status, errorMessage = null) {
   const cid = parseInt(campaignId);
 
-  if (!pool || !isConnected) {
-    const r = memoryRecipients.find(x => x.campaign_id === cid && x.phone === phone);
-    if (r) {
-      r.status = status;
-      r.error_message = errorMessage;
-      r.sent_at = status === 'sent' ? new Date() : null;
-    }
-    return r;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     await pool.query(
@@ -416,11 +337,7 @@ async function updateRecipientStatus(campaignId, phone, status, errorMessage = n
  * Get all Campaigns (Sorted newest first)
  */
 async function getCampaigns(userId) {
-  if (!pool || !isConnected) {
-    return [...memoryCampaigns]
-      .filter(c => c.session_id.startsWith(`${userId}_`))
-      .sort((a, b) => b.created_at - a.created_at);
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     const [rows] = await pool.query(
@@ -440,12 +357,7 @@ async function getCampaigns(userId) {
 async function getCampaignDetails(campaignId) {
   const id = parseInt(campaignId);
 
-  if (!pool || !isConnected) {
-    const c = memoryCampaigns.find(x => x.id === id);
-    if (!c) return null;
-    const recs = memoryRecipients.filter(x => x.campaign_id === id);
-    return { ...c, recipients: recs };
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     const [campaignRows] = await pool.query('SELECT * FROM campaigns WHERE id = ?', [id]);
@@ -481,17 +393,7 @@ function getStatus() {
  * Save chat message (incoming or outgoing)
  */
 async function saveChatMessage(sessionId, msgId, phone, message, fromMe = false) {
-  if (!pool || !isConnected) {
-    const exists = memoryChatMessages.some(m => m.msg_id === msgId);
-    if (exists) return null;
-    const chatMsg = {
-      id: memoryChatMessages.length + 1,
-      session_id: sessionId, msg_id: msgId, phone, message,
-      from_me: fromMe, created_at: new Date()
-    };
-    memoryChatMessages.push(chatMsg);
-    return chatMsg;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     // MySQL: INSERT IGNORE to silently skip duplicate msg_id
@@ -512,19 +414,7 @@ async function saveChatMessage(sessionId, msgId, phone, message, fromMe = false)
  * Returns one row per phone with the latest message — MySQL compatible
  */
 async function getChats(sessionId) {
-  if (!pool || !isConnected) {
-    const chatsMap = new Map();
-    const sorted = [...memoryChatMessages]
-      .filter(m => m.session_id === sessionId)
-      .sort((a, b) => a.created_at - b.created_at);
-    for (const m of sorted) {
-      chatsMap.set(m.phone, {
-        phone: m.phone, message: m.message,
-        from_me: m.from_me, created_at: m.created_at
-      });
-    }
-    return Array.from(chatsMap.values()).sort((a, b) => b.created_at - a.created_at);
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     // MySQL-compatible latest-per-group query
@@ -551,11 +441,7 @@ async function getChats(sessionId) {
  * Get message history for a specific conversation
  */
 async function getChatMessages(sessionId, phone) {
-  if (!pool || !isConnected) {
-    return memoryChatMessages
-      .filter(m => m.session_id === sessionId && m.phone === phone)
-      .sort((a, b) => a.created_at - b.created_at);
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
 
   try {
     const [rows] = await pool.query(
@@ -574,16 +460,7 @@ async function getChatMessages(sessionId, phone) {
 // =========================================================
 
 async function createUser(email, passwordHash) {
-  if (!pool || !isConnected) {
-    const exists = memoryUsers.some(u => u.email === email);
-    if (exists) throw new Error('Email already registered.');
-    const user = {
-      id: memoryUsers.length + 1, email,
-      password_hash: passwordHash, created_at: new Date()
-    };
-    memoryUsers.push(user);
-    return user;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
       'INSERT INTO users (email, password_hash) VALUES (?, ?)',
@@ -600,10 +477,7 @@ async function createUser(email, passwordHash) {
 }
 
 async function getUserByEmail(email) {
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.email === email);
-    return user || null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     return rows[0] || null;
@@ -615,10 +489,7 @@ async function getUserByEmail(email) {
 
 async function getUserById(id) {
   const uid = parseInt(id);
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.id === uid);
-    return user || null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query('SELECT id, email, created_at FROM users WHERE id = ?', [uid]);
     return rows[0] || null;
@@ -629,9 +500,7 @@ async function getUserById(id) {
 }
 
 async function getAllUsers() {
-  if (!pool || !isConnected) {
-    return memoryUsers.map(u => ({ id: u.id, email: u.email, created_at: u.created_at }));
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query('SELECT id, email, created_at FROM users ORDER BY id ASC');
     return rows;
@@ -643,15 +512,7 @@ async function getAllUsers() {
 
 async function updateUser(userId, email, passwordHash = null) {
   const uid = parseInt(userId);
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.id === uid);
-    if (!user) throw new Error('User not found.');
-    const exists = memoryUsers.some(u => u.email === email && u.id !== uid);
-    if (exists) throw new Error('Email already registered.');
-    user.email = email;
-    if (passwordHash) user.password_hash = passwordHash;
-    return { id: user.id, email: user.email, created_at: user.created_at };
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     if (passwordHash) {
       await pool.query('UPDATE users SET email = ?, password_hash = ? WHERE id = ?', [email, passwordHash, uid]);
@@ -672,17 +533,7 @@ async function deleteUser(userId) {
   if (uid === 1) {
     throw new Error('Cannot delete the primary admin user.');
   }
-  if (!pool || !isConnected) {
-    const idx = memoryUsers.findIndex(u => u.id === uid);
-    if (idx !== -1) {
-      memoryUsers.splice(idx, 1);
-      for (let i = memoryApiKeys.length - 1; i >= 0; i--) {
-        if (memoryApiKeys[i].user_id === uid) memoryApiKeys.splice(i, 1);
-      }
-      return true;
-    }
-    return false;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query('DELETE FROM users WHERE id = ?', [uid]);
     return res.affectedRows > 0;
@@ -698,12 +549,7 @@ async function deleteUser(userId) {
 
 async function getApiKeys(userId) {
   const uid = parseInt(userId);
-  if (!pool || !isConnected) {
-    return memoryApiKeys.filter(k => k.user_id === uid).map(k => ({
-      id: k.id, user_id: k.user_id, name: k.name,
-      key_preview: k.key_preview, key_value: k.key_value, created_at: k.created_at
-    }));
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query(
       'SELECT id, name, key_preview, key_value, created_at FROM api_keys WHERE user_id = ? ORDER BY created_at DESC',
@@ -718,15 +564,7 @@ async function getApiKeys(userId) {
 
 async function createApiKey(userId, name, keyHash, keyPreview, keyValue = null) {
   const uid = parseInt(userId);
-  if (!pool || !isConnected) {
-    const key = {
-      id: memoryApiKeys.length + 1, user_id: uid,
-      key_hash: keyHash, key_preview: keyPreview, key_value: keyValue,
-      name, created_at: new Date()
-    };
-    memoryApiKeys.push(key);
-    return key;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
       'INSERT INTO api_keys (user_id, name, key_hash, key_preview, key_value) VALUES (?, ?, ?, ?, ?)',
@@ -743,11 +581,7 @@ async function createApiKey(userId, name, keyHash, keyPreview, keyValue = null) 
 async function deleteApiKey(userId, keyId) {
   const uid = parseInt(userId);
   const kid = parseInt(keyId);
-  if (!pool || !isConnected) {
-    const idx = memoryApiKeys.findIndex(k => k.user_id === uid && k.id === kid);
-    if (idx !== -1) { memoryApiKeys.splice(idx, 1); return true; }
-    return false;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query('DELETE FROM api_keys WHERE id = ? AND user_id = ?', [kid, uid]);
     return res.affectedRows > 0;
@@ -759,12 +593,7 @@ async function deleteApiKey(userId, keyId) {
 
 async function verifyApiKey(rawKey) {
   const keyHash = crypto.createHash('sha256').update(rawKey).digest('hex');
-  if (!pool || !isConnected) {
-    const key = memoryApiKeys.find(k => k.key_hash === keyHash);
-    if (!key) return null;
-    const user = memoryUsers.find(u => u.id === key.user_id);
-    return user || null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query(
       'SELECT u.id, u.email FROM api_keys ak JOIN users u ON ak.user_id = u.id WHERE ak.key_hash = ?',
@@ -778,13 +607,7 @@ async function verifyApiKey(rawKey) {
 }
 
 async function setResetToken(email, token, expires) {
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.email === email);
-    if (!user) return false;
-    user.reset_token = token;
-    user.reset_expires = expires;
-    return true;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query(
       'UPDATE users SET reset_token = ?, reset_expires = ? WHERE email = ?',
@@ -798,10 +621,7 @@ async function setResetToken(email, token, expires) {
 }
 
 async function getUserByResetToken(token) {
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.reset_token === token && u.reset_expires > new Date());
-    return user || null;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query(
       'SELECT * FROM users WHERE reset_token = ? AND reset_expires > NOW()',
@@ -816,14 +636,7 @@ async function getUserByResetToken(token) {
 
 async function resetUserPassword(userId, passwordHash) {
   const uid = parseInt(userId);
-  if (!pool || !isConnected) {
-    const user = memoryUsers.find(u => u.id === uid);
-    if (!user) return false;
-    user.password_hash = passwordHash;
-    user.reset_token = null;
-    user.reset_expires = null;
-    return true;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query(
       'UPDATE users SET password_hash = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
@@ -841,9 +654,7 @@ async function resetUserPassword(userId, passwordHash) {
 // =========================================================
 
 async function getMcpRegistries() {
-  if (!pool || !isConnected) {
-    return memoryMcpRegistry.filter(m => m.deleted_at === null);
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query(
       'SELECT id, project_name, mcp_url, secret_key, system_instructions, is_active, created_at, updated_at FROM mcp_registry WHERE deleted_at IS NULL ORDER BY created_at DESC'
@@ -856,21 +667,7 @@ async function getMcpRegistries() {
 }
 
 async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions = '') {
-  if (!pool || !isConnected) {
-    const registry = {
-      id: memoryMcpRegistry.length + 1,
-      project_name: projectName,
-      mcp_url: mcpUrl,
-      secret_key: secretKey,
-      system_instructions: systemInstructions,
-      is_active: 1,
-      created_at: new Date(),
-      updated_at: new Date(),
-      deleted_at: null
-    };
-    memoryMcpRegistry.push(registry);
-    return registry;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
       'INSERT INTO mcp_registry (project_name, mcp_url, secret_key, system_instructions) VALUES (?, ?, ?, ?)',
@@ -890,17 +687,7 @@ async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructi
 async function updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive) {
   const rid = parseInt(id);
   const activeStatus = isActive ? 1 : 0;
-  if (!pool || !isConnected) {
-    const registry = memoryMcpRegistry.find(m => m.id === rid);
-    if (!registry) return false;
-    registry.project_name = projectName;
-    registry.mcp_url = mcpUrl;
-    registry.secret_key = secretKey;
-    registry.system_instructions = systemInstructions;
-    registry.is_active = activeStatus;
-    registry.updated_at = new Date();
-    return true;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query(
       'UPDATE mcp_registry SET project_name = ?, mcp_url = ?, secret_key = ?, system_instructions = ?, is_active = ? WHERE id = ?',
@@ -915,12 +702,7 @@ async function updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstr
 
 async function deleteMcpRegistry(id) {
   const rid = parseInt(id);
-  if (!pool || !isConnected) {
-    const registry = memoryMcpRegistry.find(m => m.id === rid);
-    if (!registry) return false;
-    registry.deleted_at = new Date();
-    return true;
-  }
+  if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     // ATURAN MUTLAK: Gunakan SoftDeletes, DILARANG KERAS menggunakan hard delete!
     const [res] = await pool.query(
@@ -935,6 +717,7 @@ async function deleteMcpRegistry(id) {
 }
 
 module.exports = {
+  connectDb,
   logMessage,
   updateMessageStatus,
   createCampaign,
