@@ -210,10 +210,28 @@ async function initSession(sessionId, io = null, forceRestart = false) {
 
         // ALWAYS use the original remoteJid for replies (avoid LID JIDs like 169999xxx)
         const originalJid = msg.key.remoteJid;
+        const altJid = msg.key.remoteJidAlt;
+        
+        // Log JID details for debugging
+        console.log(`[JID Debug] remoteJid=${originalJid} | remoteJidAlt=${altJid || 'none'}`);
+        
         if (originalJid.endsWith('@g.us') || originalJid.endsWith('@newsletter')) continue;
+        if (originalJid.endsWith('@lid') && altJid && (altJid.endsWith('@g.us') || altJid.endsWith('@newsletter'))) continue;
 
-        // Use phone number from original JID for DB storage and display
-        const phone = originalJid.split('@')[0];
+        // Determine the correct JID to send replies:
+        // If remoteJid is a LID (@lid), use remoteJidAlt (the real phone JID) for replies
+        // Otherwise, use remoteJid directly
+        let replyJid;
+        if (originalJid.endsWith('@lid') && altJid && altJid.endsWith('@s.whatsapp.net')) {
+          replyJid = altJid;
+          console.log(`[JID Debug] Using altJid for reply: ${replyJid}`);
+        } else {
+          replyJid = originalJid;
+          console.log(`[JID Debug] Using originalJid for reply: ${replyJid}`);
+        }
+
+        // Use phone number for DB storage and display (strip @domain part)
+        const phone = replyJid.split('@')[0];
         const text = msg.message?.conversation || 
                      msg.message?.extendedTextMessage?.text || 
                      msg.message?.imageMessage?.caption || 
@@ -247,10 +265,10 @@ async function initSession(sessionId, io = null, forceRestart = false) {
 
         // If it's an incoming message (not from me), forward to Gemini AI Hub
         if (!fromMe) {
-          console.log(`[SessionManager: ${sessionId}] Incoming msg from ${phone} (JID: ${originalJid}): "${text.substring(0, 50)}"`);
+          console.log(`[SessionManager: ${sessionId}] Incoming msg from ${phone} (replyJid: ${replyJid}): "${text.substring(0, 50)}"`);
           const aiHubService = require('./aiHubService');
-          // Pass originalJid so AI Hub replies to the CORRECT WhatsApp JID
-          aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io, originalJid).catch(err => {
+          // Pass replyJid (the correct phone JID, not LID) so AI Hub replies to the right number
+          aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io, replyJid).catch(err => {
             console.error(`[AI Hub] Error processing message from ${phone}:`, err.message);
           });
         }
