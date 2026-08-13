@@ -208,11 +208,12 @@ async function initSession(sessionId, io = null, forceRestart = false) {
         if (!msg.key || !msg.key.remoteJid) continue;
         if (msg.key.remoteJid === 'status@broadcast') continue;
 
-        // Skip group chats — only respond to private 1-on-1 messages
-        const remoteJid = msg.key.remoteJidAlt || msg.key.remoteJid;
-        if (remoteJid.endsWith('@g.us') || remoteJid.endsWith('@newsletter')) continue;
+        // ALWAYS use the original remoteJid for replies (avoid LID JIDs like 169999xxx)
+        const originalJid = msg.key.remoteJid;
+        if (originalJid.endsWith('@g.us') || originalJid.endsWith('@newsletter')) continue;
 
-        const phone = remoteJid.split('@')[0];
+        // Use phone number from original JID for DB storage and display
+        const phone = originalJid.split('@')[0];
         const text = msg.message?.conversation || 
                      msg.message?.extendedTextMessage?.text || 
                      msg.message?.imageMessage?.caption || 
@@ -246,9 +247,10 @@ async function initSession(sessionId, io = null, forceRestart = false) {
 
         // If it's an incoming message (not from me), forward to Gemini AI Hub
         if (!fromMe) {
-          console.log(`[SessionManager: ${sessionId}] Incoming message from ${phone}: "${text.substring(0, 50)}..."`);
+          console.log(`[SessionManager: ${sessionId}] Incoming msg from ${phone} (JID: ${originalJid}): "${text.substring(0, 50)}"`);
           const aiHubService = require('./aiHubService');
-          aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io).catch(err => {
+          // Pass originalJid so AI Hub replies to the CORRECT WhatsApp JID
+          aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io, originalJid).catch(err => {
             console.error(`[AI Hub] Error processing message from ${phone}:`, err.message);
           });
         }

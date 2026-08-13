@@ -5,7 +5,7 @@ const db = require('./db');
 /**
  * Handle incoming WhatsApp messages through Gemini API & MCP Tool routing
  */
-async function handleIncomingMessage(sessionId, phone, incomingText, socket, io) {
+async function handleIncomingMessage(sessionId, phone, incomingText, socket, io, replyJid = null) {
   const geminiApiKey = process.env.GEMINI_API_KEY;
   if (!geminiApiKey) {
     console.log('[AI Hub] GEMINI_API_KEY is not configured in .env. Skipping AI processing.');
@@ -196,7 +196,9 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
   console.log(`[AI Hub] Sending final AI response to ${phone}: ${finalReply}`);
 
   // 6. Send response via WhatsApp socket
-  const jid = `${phone}@s.whatsapp.net`;
+  // Use the original JID from the incoming message (avoids LID JID issues like 169999xxx)
+  const jid = replyJid || `${phone}@s.whatsapp.net`;
+  console.log(`[AI Hub] Sending reply to JID: ${jid}`);
   await socket.sendMessage(jid, { text: finalReply });
 
   // Save the outgoing AI reply to database
