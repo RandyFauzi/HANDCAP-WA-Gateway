@@ -62,7 +62,7 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
   // 3. Initialize Gemini
   const genAI = new GoogleGenerativeAI(geminiApiKey);
   const modelOptions = {
-    model: 'gemini-1.5-flash',
+    model: 'gemini-flash-latest',
     systemInstruction: systemInstruction
   };
 
