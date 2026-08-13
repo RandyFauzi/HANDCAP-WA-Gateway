@@ -114,7 +114,7 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
     response = result.response;
 
     // 5. Handle Function Calls (The Spoke Bridge)
-    let functionCalls = response.functionCalls;
+    let functionCalls = typeof response.functionCalls === 'function' ? response.functionCalls() : response.functionCalls;
     while (functionCalls && functionCalls.length > 0) {
       const call = functionCalls[0];
       console.log(`[AI Hub] Gemini requested function call: ${call.name} with args:`, call.args);
@@ -171,7 +171,7 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
       });
 
       response = result.response;
-      functionCalls = response.functionCalls;
+      functionCalls = typeof response.functionCalls === 'function' ? response.functionCalls() : response.functionCalls;
     }
   } catch (err) {
     console.error(`[AI Hub] Fatal error from Gemini API:`, err.message);
