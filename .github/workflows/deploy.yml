@@ -32,10 +32,10 @@ jobs:
           port: ${{ secrets.HOSTINGER_PORT }}
           script: |
             cd ~/domains/handcap-by.autogrowthid.site/nodejs
-            # Muat NVM agar node/npm dikenali
+            # Install package (using NVM if available)
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            # Install package & restart PM2
-            npm install --omit=dev --silent
-            pm2 restart handcap || pm2 start src/index.js --name handcap
-            pm2 save
+            npm install --omit=dev --silent || echo "NPM install skipped (please trigger manually from Hostinger panel if needed)"
+            # Restart Passenger Node.js app (Hostinger Shared Hosting Standard)
+            mkdir -p tmp
+            touch tmp/restart.txt
