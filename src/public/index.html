@@ -1516,6 +1516,11 @@ print(response.json())`;
         if (typeof loadMcpRegistries === 'function') loadMcpRegistries();
       }
 
+      // Trigger Sandbox API Keys load when entering Sandbox tab
+      if (tabId === 'tab-sandbox') {
+        if (typeof loadSandboxApiKeys === 'function') loadSandboxApiKeys();
+      }
+
       // Trigger overview refresh when returning to dashboard
       if (tabId === 'tab-overview') {
         if (typeof loadOverviewCampaigns === 'function') loadOverviewCampaigns();
@@ -2402,6 +2407,31 @@ print(response.json())`;
         }
       } catch (err) {
         tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:1.5rem;">Gagal memuat API Key: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function loadSandboxApiKeys() {
+      const selectEl = document.getElementById('sandbox-api-key');
+      if (!selectEl) return;
+      
+      try {
+        const response = await apiFetch('/api/v1/api-keys');
+        const res = await response.json();
+        
+        if (res.status === 'success' && res.data && res.data.length > 0) {
+          selectEl.innerHTML = '';
+          res.data.forEach(k => {
+            const actualKey = k.key_value || k.key_preview || '';
+            const option = document.createElement('option');
+            option.value = actualKey;
+            option.innerText = `${k.name} (${k.key_preview})`;
+            selectEl.appendChild(option);
+          });
+        } else {
+          selectEl.innerHTML = '<option value="supersecretapikey">Default API Key (supersecretapikey)</option>';
+        }
+      } catch (err) {
+        selectEl.innerHTML = '<option value="supersecretapikey">Default API Key (supersecretapikey)</option>';
       }
     }
 
