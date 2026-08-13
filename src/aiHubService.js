@@ -90,72 +90,81 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
     parts: [{ text: incomingText }]
   });
 
-  console.log(`[AI Hub] Invoking Gemini model for ${phone}...`);
-  let result = await model.generateContent({
-    contents
-  });
-  
-  let response = result.response;
+  let result;
+  let response;
+  try {
+    console.log(`[AI Hub] Invoking Gemini model for ${phone}...`);
+    result = await model.generateContent({
+      contents
+    });
+    response = result.response;
 
-  // 5. Handle Function Calls (The Spoke Bridge)
-  let functionCalls = response.functionCalls;
-  while (functionCalls && functionCalls.length > 0) {
-    const call = functionCalls[0];
-    console.log(`[AI Hub] Gemini requested function call: ${call.name} with args:`, call.args);
+    // 5. Handle Function Calls (The Spoke Bridge)
+    let functionCalls = response.functionCalls;
+    while (functionCalls && functionCalls.length > 0) {
+      const call = functionCalls[0];
+      console.log(`[AI Hub] Gemini requested function call: ${call.name} with args:`, call.args);
 
-    const targetMcp = functionMcpMap.get(call.name);
-    if (!targetMcp) {
-      console.warn(`[AI Hub] Requested function ${call.name} has no associated MCP server registered.`);
-      break;
-    }
+      const targetMcp = functionMcpMap.get(call.name);
+      if (!targetMcp) {
+        console.warn(`[AI Hub] Requested function ${call.name} has no associated MCP server registered.`);
+        break;
+      }
 
-    let toolResult;
-    try {
-      console.log(`[AI Hub] Forwarding function execution to: ${targetMcp.project_name} -> ${targetMcp.mcp_url}`);
-      const mcpResponse = await axios.post(targetMcp.mcp_url, {
-        method: 'tools/call',
-        params: {
-          name: call.name,
-          arguments: call.args
-        }
-      }, {
-        headers: {
-          'Authorization': `Bearer ${targetMcp.secret_key}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 15000
+      let toolResult;
+      try {
+        console.log(`[AI Hub] Forwarding function execution to: ${targetMcp.project_name} -> ${targetMcp.mcp_url}`);
+        const mcpResponse = await axios.post(targetMcp.mcp_url, {
+          method: 'tools/call',
+          params: {
+            name: call.name,
+            arguments: call.args
+          }
+        }, {
+          headers: {
+            'Authorization': `Bearer ${targetMcp.secret_key}`,
+            'Content-Type': 'application/json'
+          },
+          timeout: 15000
+        });
+
+        toolResult = mcpResponse.data?.result || mcpResponse.data || { success: true };
+      } catch (err) {
+        console.error(`[AI Hub] MCP Call failed for ${call.name}:`, err.message);
+        toolResult = { error: `MCP Call failed: ${err.message}` };
+      }
+
+      console.log(`[AI Hub] Sending tool result back to Gemini:`, toolResult);
+      
+      // Feed the function execution result back to the model
+      result = await model.generateContent({
+        contents: [
+          ...contents,
+          {
+            role: 'model',
+            parts: [response.candidates[0].content.parts[0]]
+          },
+          {
+            role: 'user',
+            parts: [{
+              functionResponse: {
+                name: call.name,
+                response: { result: toolResult }
+              }
+            }]
+          }
+        ]
       });
 
-      toolResult = mcpResponse.data?.result || mcpResponse.data || { success: true };
-    } catch (err) {
-      console.error(`[AI Hub] MCP Call failed for ${call.name}:`, err.message);
-      toolResult = { error: `MCP Call failed: ${err.message}` };
+      response = result.response;
+      functionCalls = response.functionCalls;
     }
-
-    console.log(`[AI Hub] Sending tool result back to Gemini:`, toolResult);
-    
-    // Feed the function execution result back to the model
-    result = await model.generateContent({
-      contents: [
-        ...contents,
-        {
-          role: 'model',
-          parts: [response.candidates[0].content.parts[0]]
-        },
-        {
-          role: 'user',
-          parts: [{
-            functionResponse: {
-              name: call.name,
-              response: { result: toolResult }
-            }
-          }]
-        }
-      ]
-    });
-
-    response = result.response;
-    functionCalls = response.functionCalls;
+  } catch (err) {
+    console.error(`[AI Hub] Fatal error from Gemini API:`, err.message);
+    const errorMsg = `[Sistem HANDCAP] Maaf, otak AI gagal merespons. Kendala: ${err.message}`;
+    const jid = `${phone}@s.whatsapp.net`;
+    await socket.sendMessage(jid, { text: errorMsg });
+    return;
   }
 
   const finalReply = response.text;
