@@ -189,8 +189,8 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
   }
 
   if (!finalReply) {
-    console.warn('[AI Hub] Gemini returned empty response text.');
-    return;
+    console.warn('[AI Hub] Gemini returned empty response text. Sending fallback reply.');
+    finalReply = 'Maaf, saya tidak bisa memproses permintaan Anda saat ini. Silakan coba lagi.';
   }
 
   console.log(`[AI Hub] Sending final AI response to ${phone}: ${finalReply}`);
