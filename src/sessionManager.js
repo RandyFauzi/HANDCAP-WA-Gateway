@@ -204,48 +204,60 @@ async function initSession(sessionId, io = null, forceRestart = false) {
     if (m.type !== 'notify') return;
     const db = require('./db');
     for (const msg of m.messages) {
-      if (!msg.key || !msg.key.remoteJid) continue;
-      if (msg.key.remoteJid === 'status@broadcast') continue;
+      try {
+        if (!msg.key || !msg.key.remoteJid) continue;
+        if (msg.key.remoteJid === 'status@broadcast') continue;
 
-      // Resolve LID to PN (Phone Number) if remoteJidAlt is available to prevent thread duplication
-      const targetJid = msg.key.remoteJidAlt || msg.key.remoteJid;
-      const phone = targetJid.split('@')[0];
-      const text = msg.message?.conversation || 
-                   msg.message?.extendedTextMessage?.text || 
-                   msg.message?.imageMessage?.caption || 
-                   '';
-      
-      if (!text) continue;
+        // Skip group chats — only respond to private 1-on-1 messages
+        const remoteJid = msg.key.remoteJidAlt || msg.key.remoteJid;
+        if (remoteJid.endsWith('@g.us') || remoteJid.endsWith('@newsletter')) continue;
 
-      const fromMe = msg.key.fromMe || false;
-      const msgId = msg.key.id;
+        const phone = remoteJid.split('@')[0];
+        const text = msg.message?.conversation || 
+                     msg.message?.extendedTextMessage?.text || 
+                     msg.message?.imageMessage?.caption || 
+                     '';
+        
+        if (!text) continue;
 
-      // Save message
-      await db.saveChatMessage(sessionId, msgId, phone, text, fromMe);
+        const fromMe = msg.key.fromMe || false;
+        const msgId = msg.key.id;
 
-      // Broadcast to client dashboard in real-time (user specific room)
-      if (io) {
-        const userId = sessionId.split('_')[0];
-        const userSessionId = sessionId.replace(`${userId}_`, '');
-        io.to(`user_${userId}`).emit('new-message', {
-          sessionId: userSessionId,
-          msgId,
-          phone,
-          message: text,
-          fromMe,
-          created_at: new Date()
-        });
-      }
+        // Save message to DB (non-critical: if fails, still process AI reply)
+        try {
+          await db.saveChatMessage(sessionId, msgId, phone, text, fromMe);
+        } catch (dbErr) {
+          console.error(`[SessionManager] Failed to save message to DB (continuing anyway):`, dbErr.message);
+        }
 
-      // If it's an incoming message (not from me), forward to Gemini AI Hub
-      if (!fromMe) {
-        const aiHubService = require('./aiHubService');
-        aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io).catch(err => {
-          console.error(`[AI Hub] Error processing message from ${phone}:`, err.message);
-        });
+        // Broadcast to client dashboard in real-time (user specific room)
+        if (io) {
+          const userId = sessionId.split('_')[0];
+          const userSessionId = sessionId.replace(`${userId}_`, '');
+          io.to(`user_${userId}`).emit('new-message', {
+            sessionId: userSessionId,
+            msgId,
+            phone,
+            message: text,
+            fromMe,
+            created_at: new Date()
+          });
+        }
+
+        // If it's an incoming message (not from me), forward to Gemini AI Hub
+        if (!fromMe) {
+          console.log(`[SessionManager: ${sessionId}] Incoming message from ${phone}: "${text.substring(0, 50)}..."`);
+          const aiHubService = require('./aiHubService');
+          aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io).catch(err => {
+            console.error(`[AI Hub] Error processing message from ${phone}:`, err.message);
+          });
+        }
+      } catch (err) {
+        console.error(`[SessionManager: ${sessionId}] Unexpected error in messages.upsert handler:`, err.message);
       }
     }
   });
+
 
   // Monitor connection updates
   socket.ev.on('connection.update', async (update) => {
