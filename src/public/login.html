@@ -453,7 +453,7 @@
       text-decoration: underline;
     }
 
-    button[type="submit"] {
+    .action-btn {
       background-color: var(--primary);
       color: white;
       border: none;
@@ -471,29 +471,15 @@
       box-shadow: 0 4px 12px rgba(35, 76, 240, 0.22);
       margin-top: 0.05rem;
       position: relative;
-      overflow: hidden;
     }
 
-    button[type="submit"]::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    button[type="submit"]:hover {
+    .action-btn:hover {
       background-color: var(--primary-hover);
       box-shadow: 0 6px 18px rgba(35, 76, 240, 0.3);
       transform: translateY(-1px);
     }
 
-    button[type="submit"]:hover::after {
-      opacity: 1;
-    }
-
-    button[type="submit"]:active {
+    .action-btn:active {
       transform: translateY(1px);
     }
 
@@ -532,7 +518,7 @@
     }
 
     /* Social Google Button */
-    .social-btn {
+    .google-login-btn {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -549,22 +535,22 @@
       transition: var(--transition);
     }
 
-    body.dark-mode .social-btn {
+    body.dark-mode .google-login-btn {
       background: rgba(255, 255, 255, 0.05);
       border-color: rgba(255, 255, 255, 0.08);
     }
 
-    .social-btn:hover {
+    .google-login-btn:hover {
       background: #f8fafc;
       border-color: var(--primary);
     }
 
-    body.dark-mode .social-btn:hover {
+    body.dark-mode .google-login-btn:hover {
       background: rgba(255, 255, 255, 0.1);
       border-color: rgba(255, 255, 255, 0.2);
     }
 
-    .social-btn img {
+    .google-login-btn img {
       width: 16px;
       height: 16px;
     }
@@ -743,7 +729,7 @@
           <a href="/forgot.html" class="forgot-password-link">Lupa sandi?</a>
         </div>
 
-        <button type="submit" id="btn-submit">
+        <button type="submit" id="btn-submit" class="action-btn">
           <span>Masuk ke Dashboard</span>
           <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
         </button>
@@ -756,7 +742,7 @@
       </div>
 
       <!-- Social login button (visual ornament) -->
-      <button type="button" class="social-btn" onclick="showCustomAlert('Masuk Google', 'Masuk Google sedang dalam pengembangan.')">
+      <button type="button" class="google-login-btn" onclick="showCustomAlert('Masuk Google', 'Masuk Google sedang dalam pengembangan.')">
         <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuBZ523FgJW1F6IQRSisQdyN2ybgmZ2mvGqaWDoPDyLqwoRX04V-vRC1zWWcTmcUVs6o32cHsoH55s1Tjf0beQ5CO7bE1g0vj4h7Mz_Zc10NLguddT4T3pvEdlzhiXYRisYU9Y1f-NzvubULBJzztJ_XpDTHNxQEiv01cSDeowG15E-M2IgsRkZca_CMstq1XuUj7FQWlDEgaFvp1lCf8nTbvo3GzznbSFhmEC2wH69msEb8FMsAe6_o-YDOo2g6j-cFGd3y6kCj" alt="Google Logo">
         <span>Lanjutkan dengan Google</span>
       </button>
@@ -890,7 +876,7 @@
       ease: 'power3.out'
     });
 
-    gsap.from('.brand-section, .form-group, .form-options-row, button[type="submit"], .divider-container, .social-btn, .footer-text', {
+    gsap.from('.brand-section, .form-group, .form-options-row, .action-btn, .divider-container, .google-login-btn, .footer-text', {
       opacity: 0,
       y: 10,
       duration: 0.6,

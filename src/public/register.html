@@ -490,7 +490,7 @@
       text-decoration: underline;
     }
 
-    button[type="submit"] {
+    .action-btn {
       background-color: var(--primary);
       color: white;
       border: none;
@@ -506,31 +506,17 @@
       gap: 0.45rem;
       width: 100%;
       box-shadow: 0 4px 12px rgba(35, 76, 240, 0.22);
-      margin-top: clamp(0.1rem, 0.8vh, 0.2rem);
+      margin-top: 0.05rem;
       position: relative;
-      overflow: hidden;
     }
 
-    button[type="submit"]::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0));
-      opacity: 0;
-      transition: opacity 0.2s ease;
-    }
-
-    button[type="submit"]:hover {
+    .action-btn:hover {
       background-color: var(--primary-hover);
       box-shadow: 0 6px 18px rgba(35, 76, 240, 0.3);
       transform: translateY(-1px);
     }
 
-    button[type="submit"]:hover::after {
-      opacity: 1;
-    }
-
-    button[type="submit"]:active {
+    .action-btn:active {
       transform: translateY(1px);
     }
 
@@ -699,7 +685,7 @@
           <span>Saya setuju dengan <a href="#">Ketentuan Layanan</a> & <a href="#">Kebijakan Privasi</a>.</span>
         </label>
 
-        <button type="submit" id="btn-submit">
+        <button type="submit" id="btn-submit" class="action-btn">
           <span>Daftar</span>
           <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
         </button>
@@ -806,7 +792,7 @@
       ease: 'power3.out'
     });
 
-    gsap.from('.brand-section, .form-group, .terms-row, button[type="submit"], .footer-text', {
+    gsap.from('.brand-section, .form-group, .terms-row, .action-btn, .footer-text', {
       opacity: 0,
       y: 10,
       duration: 0.6,
