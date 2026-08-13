@@ -181,7 +181,13 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io)
     return;
   }
 
-  const finalReply = response.text;
+  let finalReply = '';
+  try {
+    finalReply = typeof response.text === 'function' ? response.text() : '';
+  } catch (err) {
+    console.warn('[AI Hub] No text found in Gemini response (perhaps only function calls).');
+  }
+
   if (!finalReply) {
     console.warn('[AI Hub] Gemini returned empty response text.');
     return;
