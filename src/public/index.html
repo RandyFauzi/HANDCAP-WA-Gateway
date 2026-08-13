@@ -997,6 +997,9 @@
       <div class="tab-content" id="tab-users">
         <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
       </div>
+      <div class="tab-content" id="tab-aihub">
+        <div style="padding: 4rem 2rem; text-align: center;"><div class="spinner" style="margin: 0 auto; width: 24px; height: 24px;"></div><p style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-muted);">Memuat halaman...</p></div>
+      </div>
     </main>
 
   </div>
@@ -1309,7 +1312,8 @@
       'tab-sandbox': '/partials/sandbox.html',
       'tab-docs': '/partials/docs.html',
       'tab-settings': '/partials/settings.html',
-      'tab-users': '/partials/users.html'
+      'tab-users': '/partials/users.html',
+      'tab-aihub': '/partials/aihub.html'
     };
 
     // Asynchronously load all partial contents
@@ -1505,6 +1509,11 @@ print(response.json())`;
       // Trigger admin users load when entering admin users tab
       if (tabId === 'tab-users') {
         if (typeof loadAdminUsers === 'function') loadAdminUsers();
+      }
+
+      // Trigger MCP registries load when entering AI Hub tab
+      if (tabId === 'tab-aihub') {
+        if (typeof loadMcpRegistries === 'function') loadMcpRegistries();
       }
 
       // Trigger overview refresh when returning to dashboard
@@ -2571,6 +2580,171 @@ print(response.json())`;
         }
       } catch (err) {
         showToast('Network Error', 'Gagal menghubungi server.', 'error');
+      }
+    }
+
+    // =========================================================
+    // AI HUB (MCP REGISTRY) FRONTEND LOGIC
+    // =========================================================
+    async function loadMcpRegistries() {
+      const tbody = document.getElementById('mcp-list');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;"><div class="spinner" style="margin: 0 auto;"></div></td></tr>';
+
+      try {
+        const response = await apiFetch('/api/v1/mcp');
+        const res = await response.json();
+        if (response.ok && res.status === 'success' && res.data) {
+          if (tbody) {
+            tbody.innerHTML = '';
+            if (res.data.length === 0) {
+              tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-muted);">Belum ada project MCP terdaftar.</td></tr>';
+              return;
+            }
+            res.data.forEach(m => {
+              const tr = document.createElement('tr');
+              
+              const activeBadge = m.is_active === 1
+                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}')">Aktif</span>`
+                : `<span class="badge badge-danger" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}')">Nonaktif</span>`;
+
+              tr.innerHTML = `
+                <td style="font-weight:600; padding:1rem;">${escapeHtml(m.project_name)}</td>
+                <td style="font-family:monospace; font-size:0.8rem; padding:1rem;">${escapeHtml(m.mcp_url)}</td>
+                <td style="font-family:monospace; font-size:0.8rem; padding:1rem;">••••••••${escapeHtml(m.secret_key.slice(-4))}</td>
+                <td style="padding:1rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(m.system_instructions || '-')}</td>
+                <td style="padding:1rem;">${activeBadge}</td>
+                <td style="padding:1rem;">
+                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; margin-right: 0.25rem;" onclick="openEditMcpModal(${m.id}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}', ${m.is_active})">Edit</button>
+                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; color: var(--danger); border-color: var(--danger);" onclick="deleteMcpRegistry(${m.id})">Hapus</button>
+                </td>
+              `;
+              tbody.appendChild(tr);
+            });
+          }
+        } else {
+          if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--danger);">Gagal memuat data MCP registry.</td></tr>';
+        }
+      } catch (err) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--danger);">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function openAddMcpModal() {
+      document.getElementById('mcp-modal-title').innerText = 'Daftarkan Proyek MCP';
+      document.getElementById('mcp-id').value = '';
+      document.getElementById('mcp-project-name').value = '';
+      document.getElementById('mcp-url').value = '';
+      document.getElementById('mcp-secret-key').value = '';
+      document.getElementById('mcp-instructions').value = '';
+      document.getElementById('mcp-active').checked = true;
+      document.getElementById('mcp-modal').classList.add('active');
+    }
+
+    function openEditMcpModal(id, projectName, mcpUrl, secretKey, instructions, isActive) {
+      document.getElementById('mcp-modal-title').innerText = 'Edit Registrasi Proyek MCP';
+      document.getElementById('mcp-id').value = id;
+      document.getElementById('mcp-project-name').value = projectName;
+      document.getElementById('mcp-url').value = mcpUrl;
+      document.getElementById('mcp-secret-key').value = secretKey;
+      document.getElementById('mcp-instructions').value = instructions;
+      document.getElementById('mcp-active').checked = isActive === 1;
+      document.getElementById('mcp-modal').classList.add('active');
+    }
+
+    function closeMcpModal() {
+      document.getElementById('mcp-modal').classList.remove('active');
+    }
+
+    async function saveMcpRegistry() {
+      const id = document.getElementById('mcp-id').value;
+      const projectName = document.getElementById('mcp-project-name').value.trim();
+      const mcpUrl = document.getElementById('mcp-url').value.trim();
+      const secretKey = document.getElementById('mcp-secret-key').value.trim();
+      const systemInstructions = document.getElementById('mcp-instructions').value.trim();
+      const isActive = document.getElementById('mcp-active').checked;
+
+      if (!projectName || !mcpUrl || !secretKey) {
+        showToast('Validasi Gagal', 'Semua field wajib diisi kecuali instruksi tambahan.', 'warning');
+        return;
+      }
+
+      const method = id ? 'PUT' : 'POST';
+      const url = id ? `/api/v1/mcp/${id}` : '/api/v1/mcp';
+      
+      const payload = {
+        projectName,
+        mcpUrl,
+        secretKey,
+        systemInstructions,
+        isActive
+      };
+
+      try {
+        const response = await apiFetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const res = await response.json();
+        if (response.ok && res.status === 'success') {
+          showToast('Sukses', id ? 'MCP berhasil diperbarui.' : 'MCP berhasil didaftarkan.', 'success');
+          closeMcpModal();
+          loadMcpRegistries();
+        } else {
+          showToast('Gagal Menyimpan', res.message || 'Terjadi kesalahan.', 'error');
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal terhubung dengan server.', 'error');
+      }
+    }
+
+    async function toggleMcpActiveStatus(id, currentStatus, projectName, mcpUrl, secretKey, instructions) {
+      const newStatus = currentStatus === 1 ? 0 : 1;
+      try {
+        const response = await apiFetch(`/api/v1/mcp/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectName,
+            mcpUrl,
+            secretKey,
+            systemInstructions: instructions,
+            isActive: newStatus === 1
+          })
+        });
+
+        const res = await response.json();
+        if (response.ok && res.status === 'success') {
+          showToast('Status Diperbarui', `Proyek ${projectName} sekarang ${newStatus === 1 ? 'Aktif' : 'Nonaktif'}.`, 'success');
+          loadMcpRegistries();
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal mengubah status.', 'error');
+      }
+    }
+
+    async function deleteMcpRegistry(id) {
+      const confirmDelete = await customConfirm(
+        'Hapus Proyek MCP',
+        'Apakah Anda yakin ingin menghapus proyek ini? Proyek ini tidak akan lagi diredireksi oleh AI Hub.'
+      );
+      if (!confirmDelete) return;
+
+      try {
+        const response = await apiFetch(`/api/v1/mcp/${id}`, {
+          method: 'DELETE'
+        });
+
+        const res = await response.json();
+        if (response.ok && res.status === 'success') {
+          showToast('Hapus Sukses', 'Proyek MCP berhasil dihapus.', 'success');
+          loadMcpRegistries();
+        } else {
+          showToast('Hapus Gagal', res.message || 'Terjadi kesalahan.', 'error');
+        }
+      } catch (err) {
+        showToast('Network Error', 'Gagal menghapus proyek.', 'error');
       }
     }
 

@@ -977,6 +977,114 @@ router.delete('/api-keys/:id', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/v1/mcp
+ * Fetch all registered active MCP clients
+ */
+router.get('/mcp', authenticate, async (req, res) => {
+  try {
+    const registries = await db.getMcpRegistries();
+    return res.status(200).json({
+      status: 'success',
+      data: registries
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+});
+
+/**
+ * POST /api/v1/mcp
+ * Register a new MCP client website
+ */
+router.post('/mcp', authenticate, async (req, res) => {
+  const { projectName, mcpUrl, secretKey, systemInstructions } = req.body;
+  if (!projectName || !mcpUrl || !secretKey) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'projectName, mcpUrl, and secretKey are required.'
+    });
+  }
+
+  try {
+    const newMcp = await db.createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions || '');
+    return res.status(201).json({
+      status: 'success',
+      message: 'MCP server registered successfully.',
+      data: newMcp
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+});
+
+/**
+ * PUT /api/v1/mcp/:id
+ * Update an existing MCP client registration
+ */
+router.put('/mcp/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  const { projectName, mcpUrl, secretKey, systemInstructions, isActive } = req.body;
+
+  if (!projectName || !mcpUrl || !secretKey) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'projectName, mcpUrl, and secretKey are required.'
+    });
+  }
+
+  try {
+    const success = await db.updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive);
+    if (success) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'MCP registry updated successfully.'
+      });
+    }
+    return res.status(404).json({
+      status: 'error',
+      message: 'MCP registry not found.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/v1/mcp/:id
+ * Soft delete an MCP client registration
+ */
+router.delete('/mcp/:id', authenticate, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const success = await db.deleteMcpRegistry(id);
+    if (success) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'MCP server soft-deleted successfully.'
+      });
+    }
+    return res.status(404).json({
+      status: 'error',
+      message: 'MCP registry not found.'
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+});
+
 module.exports = router;
 
 

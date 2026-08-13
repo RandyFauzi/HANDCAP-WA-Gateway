@@ -13,6 +13,7 @@ const memoryRecipients = [];
 const memoryChatMessages = [];
 const memoryUsers = [];
 const memoryApiKeys = [];
+const memoryMcpRegistry = [];
 let memoryCampaignIdCounter = 1;
 let memoryRecipientIdCounter = 1;
 
@@ -178,7 +179,21 @@ if (hasDbConfig) {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
 
-      console.log('Database tables initialized (users, api_keys, sent_messages, campaigns, campaign_recipients, chat_messages).');
+      await pool.query(`
+        CREATE TABLE IF NOT EXISTS mcp_registry (
+          id INT AUTO_INCREMENT PRIMARY KEY,
+          project_name VARCHAR(100) NOT NULL,
+          mcp_url VARCHAR(255) NOT NULL,
+          secret_key VARCHAR(255) NOT NULL,
+          system_instructions TEXT,
+          is_active TINYINT(1) NOT NULL DEFAULT 1,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMP NULL DEFAULT NULL
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      console.log('Database tables initialized (users, api_keys, sent_messages, campaigns, campaign_recipients, chat_messages, mcp_registry).');
 
       // Seed main admin user if not exists
       const email = 'randyfauzi24@gmail.com';
@@ -821,6 +836,104 @@ async function resetUserPassword(userId, passwordHash) {
   }
 }
 
+// =========================================================
+// MCP REGISTRY MANAGEMENT (Central AI Hub)
+// =========================================================
+
+async function getMcpRegistries() {
+  if (!pool || !isConnected) {
+    return memoryMcpRegistry.filter(m => m.deleted_at === null);
+  }
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, project_name, mcp_url, secret_key, system_instructions, is_active, created_at, updated_at FROM mcp_registry WHERE deleted_at IS NULL ORDER BY created_at DESC'
+    );
+    return rows;
+  } catch (err) {
+    console.error('Failed to get MCP registries:', err.message);
+    return [];
+  }
+}
+
+async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions = '') {
+  if (!pool || !isConnected) {
+    const registry = {
+      id: memoryMcpRegistry.length + 1,
+      project_name: projectName,
+      mcp_url: mcpUrl,
+      secret_key: secretKey,
+      system_instructions: systemInstructions,
+      is_active: 1,
+      created_at: new Date(),
+      updated_at: new Date(),
+      deleted_at: null
+    };
+    memoryMcpRegistry.push(registry);
+    return registry;
+  }
+  try {
+    await pool.query(
+      'INSERT INTO mcp_registry (project_name, mcp_url, secret_key, system_instructions) VALUES (?, ?, ?, ?)',
+      [projectName, mcpUrl, secretKey, systemInstructions]
+    );
+    const [rows] = await pool.query(
+      'SELECT * FROM mcp_registry WHERE project_name = ? AND mcp_url = ? ORDER BY id DESC LIMIT 1',
+      [projectName, mcpUrl]
+    );
+    return rows[0];
+  } catch (err) {
+    console.error('Failed to create MCP registry:', err.message);
+    throw err;
+  }
+}
+
+async function updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive) {
+  const rid = parseInt(id);
+  const activeStatus = isActive ? 1 : 0;
+  if (!pool || !isConnected) {
+    const registry = memoryMcpRegistry.find(m => m.id === rid);
+    if (!registry) return false;
+    registry.project_name = projectName;
+    registry.mcp_url = mcpUrl;
+    registry.secret_key = secretKey;
+    registry.system_instructions = systemInstructions;
+    registry.is_active = activeStatus;
+    registry.updated_at = new Date();
+    return true;
+  }
+  try {
+    const [res] = await pool.query(
+      'UPDATE mcp_registry SET project_name = ?, mcp_url = ?, secret_key = ?, system_instructions = ?, is_active = ? WHERE id = ?',
+      [projectName, mcpUrl, secretKey, systemInstructions, activeStatus, rid]
+    );
+    return res.affectedRows > 0;
+  } catch (err) {
+    console.error('Failed to update MCP registry:', err.message);
+    return false;
+  }
+}
+
+async function deleteMcpRegistry(id) {
+  const rid = parseInt(id);
+  if (!pool || !isConnected) {
+    const registry = memoryMcpRegistry.find(m => m.id === rid);
+    if (!registry) return false;
+    registry.deleted_at = new Date();
+    return true;
+  }
+  try {
+    // ATURAN MUTLAK: Gunakan SoftDeletes, DILARANG KERAS menggunakan hard delete!
+    const [res] = await pool.query(
+      'UPDATE mcp_registry SET deleted_at = NOW() WHERE id = ?',
+      [rid]
+    );
+    return res.affectedRows > 0;
+  } catch (err) {
+    console.error('Failed to soft delete MCP registry:', err.message);
+    return false;
+  }
+}
+
 module.exports = {
   logMessage,
   updateMessageStatus,
@@ -846,5 +959,9 @@ module.exports = {
   setResetToken,
   getUserByResetToken,
   resetUserPassword,
+  getMcpRegistries,
+  createMcpRegistry,
+  updateMcpRegistry,
+  deleteMcpRegistry,
   pool
 };

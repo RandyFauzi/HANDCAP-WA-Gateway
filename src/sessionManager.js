@@ -236,6 +236,14 @@ async function initSession(sessionId, io = null, forceRestart = false) {
           created_at: new Date()
         });
       }
+
+      // If it's an incoming message (not from me), forward to Gemini AI Hub
+      if (!fromMe) {
+        const aiHubService = require('./aiHubService');
+        aiHubService.handleIncomingMessage(sessionId, phone, text, socket, io).catch(err => {
+          console.error(`[AI Hub] Error processing message from ${phone}:`, err.message);
+        });
+      }
     }
   });
 

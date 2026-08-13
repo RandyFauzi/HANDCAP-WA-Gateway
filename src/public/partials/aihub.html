@@ -1,0 +1,79 @@
+<div class="card glass-panel" style="margin-bottom: 2rem;">
+  <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem; border-bottom: 1px solid var(--border-color);">
+    <div>
+      <h2 class="card-title" style="margin: 0; font-size: 1.25rem; font-weight: 700;">Central AI Hub (MCP Registry)</h2>
+      <p style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Integrasikan dan kelola Model Context Protocol (MCP) server eksternal untuk bot AI WhatsApp Anda.</p>
+    </div>
+    <button class="btn-primary" onclick="openAddMcpModal()" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; padding: 0.6rem 1.2rem; border-radius: 8px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.25rem;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Daftarkan Proyek
+    </button>
+  </div>
+
+  <div class="card-body" style="padding: 0; overflow-x: auto;">
+    <table class="table" style="width: 100%; border-collapse: collapse; text-align: left;">
+      <thead>
+        <tr style="border-bottom: 2px solid var(--border-color); background: rgba(0,0,0,0.02);">
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">Nama Proyek</th>
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">MCP Endpoint URL</th>
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">Secret Key</th>
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">SOP / Instruksi</th>
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">Status</th>
+          <th style="padding: 1rem; font-weight: 600; color: var(--text-muted);">Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="mcp-list">
+        <tr>
+          <td colspan="6" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+            <div class="spinner" style="margin: 0 auto 1rem auto;"></div>
+            Memuat data proyek...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- MCP ADD/EDIT MODAL -->
+<div class="modal-backdrop" id="mcp-modal">
+  <div class="modal-card glass-panel" style="max-width: 600px; width: 90%;">
+    <div class="modal-header" style="padding: 1.5rem 2rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <h3 class="card-title" id="mcp-modal-title" style="margin: 0; font-size: 1.15rem; font-weight: 700;">Daftarkan Proyek MCP</h3>
+      <button onclick="closeMcpModal()" style="background: transparent; border: none; font-size: 1.25rem; color: var(--text-muted); cursor: pointer;">✕</button>
+    </div>
+    
+    <div class="modal-body" style="padding: 2rem;">
+      <input type="hidden" id="mcp-id">
+      
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="mcp-project-name" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Nama Proyek</label>
+        <input type="text" id="mcp-project-name" placeholder="Contoh: KameraKita" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="mcp-url" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">MCP Endpoint URL</label>
+        <input type="url" id="mcp-url" placeholder="https://domain.com/api/mcp" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; font-family: monospace;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="mcp-secret-key" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">Secret Key (Bearer Token)</label>
+        <input type="password" id="mcp-secret-key" placeholder="Bearer Token Keamanan" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; font-family: monospace;">
+      </div>
+
+      <div class="form-group" style="margin-bottom: 1.25rem;">
+        <label for="mcp-instructions" style="display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted);">SOP / Instruksi Sistem Khusus (System Prompt Context)</label>
+        <textarea id="mcp-instructions" rows="4" placeholder="Tuliskan instruksi bahasa, kepribadian, atau panduan SOP untuk AI saat merespon project ini..." style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; resize: vertical; font-family: inherit; font-size: 0.9rem;"></textarea>
+      </div>
+
+      <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
+        <input type="checkbox" id="mcp-active" style="width: 16px; height: 16px; cursor: pointer;">
+        <label for="mcp-active" style="font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; color: var(--text-muted);">Aktifkan Proyek</label>
+      </div>
+    </div>
+
+    <div class="modal-footer" style="padding: 1.5rem 2rem; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 0.75rem;">
+      <button class="btn-secondary" onclick="closeMcpModal()" style="padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem;">Batal</button>
+      <button class="btn-primary" onclick="saveMcpRegistry()" style="padding: 0.6rem 1.2rem; border-radius: 8px; font-size: 0.85rem;">Simpan Registrasi</button>
+    </div>
+  </div>
+</div>
