@@ -36,10 +36,13 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
         return clean;
       });
       
-      const sanitizedPhone = phone.replace(/[^0-9]/g, '');
+      let sanitizedPhone = phone.replace(/[^0-9]/g, '');
+      if (sanitizedPhone.startsWith('0')) {
+        sanitizedPhone = '62' + sanitizedPhone.substring(1);
+      }
       
       if (!allowedArray.includes(sanitizedPhone)) {
-        console.log(`[AI Hub] Access DENIED for phone ${phone} to project ${mcp.project_name}. Skipping tools.`);
+        console.log(`[AI Hub] Access DENIED for phone ${phone} (sanitized: ${sanitizedPhone}) to project ${mcp.project_name}. Allowed: ${allowedArray.join(', ')}`);
         // Kita juga tambahkan konteks ke prompt agar AI tahu bahwa proyek ini diblokir untuk user tersebut
         systemInstruction += `\n\n[INFO SISTEM] Akses ke proyek ${mcp.project_name} DITOLAK untuk nomor ${phone}. Anda tidak memiliki alat untuk proyek ini. Jawab dengan sopan bahwa fitur tersebut khusus Admin.`;
         continue; // Skip loading tools from this MCP
