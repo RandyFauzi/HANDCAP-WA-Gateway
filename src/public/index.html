@@ -2634,8 +2634,8 @@ print(response.json())`;
               const tr = document.createElement('tr');
               
               const activeBadge = m.is_active === 1
-                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'))">Aktif</span>`
-                : `<span class="badge badge-danger" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'))">Nonaktif</span>`;
+                ? `<span class="badge badge-success" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Aktif</span>`
+                : `<span class="badge badge-danger" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Nonaktif</span>`;
 
               tr.innerHTML = `
                 <td style="font-weight:600; padding:1rem;">${escapeHtml(m.project_name)}</td>
@@ -2643,8 +2643,8 @@ print(response.json())`;
                 <td style="font-family:monospace; font-size:0.8rem; padding:1rem;">••••••••${escapeHtml(m.secret_key.slice(-4))}</td>
                 <td style="padding:1rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(m.system_instructions || '-')}</td>
                 <td style="padding:1rem;">${activeBadge}</td>
-                <td style="padding:1rem;">
-                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; margin-right: 0.25rem;" onclick="openEditMcpModal(${m.id}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'), ${m.is_active})">Edit</button>
+                <td style="padding:1rem; text-align:right; display: flex; gap: 0.5rem; justify-content: flex-end;">
+                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px;" data-id="${m.id}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" data-active="${m.is_active}" onclick="openEditMcpModalFromBtn(this)">Edit</button>
                   <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; color: var(--danger); border-color: var(--danger);" onclick="deleteMcpRegistry(${m.id})">Hapus</button>
                 </td>
               `;
@@ -2668,6 +2668,17 @@ print(response.json())`;
       document.getElementById('mcp-instructions').value = '';
       document.getElementById('mcp-active').checked = true;
       document.getElementById('mcp-modal').classList.add('active');
+    }
+
+    function openEditMcpModalFromBtn(btn) {
+      openEditMcpModal(
+        btn.getAttribute('data-id'),
+        btn.getAttribute('data-project'),
+        btn.getAttribute('data-url'),
+        btn.getAttribute('data-key'),
+        btn.getAttribute('data-instructions'),
+        parseInt(btn.getAttribute('data-active'))
+      );
     }
 
     function openEditMcpModal(id, projectName, mcpUrl, secretKey, instructions, isActive) {
@@ -2727,6 +2738,17 @@ print(response.json())`;
       } catch (err) {
         showToast('Network Error', 'Gagal terhubung dengan server.', 'error');
       }
+    }
+
+    function toggleMcpActiveStatusFromBtn(btn) {
+      toggleMcpActiveStatus(
+        btn.getAttribute('data-id'),
+        parseInt(btn.getAttribute('data-active')),
+        btn.getAttribute('data-project'),
+        btn.getAttribute('data-url'),
+        btn.getAttribute('data-key'),
+        btn.getAttribute('data-instructions')
+      );
     }
 
     async function toggleMcpActiveStatus(id, currentStatus, projectName, mcpUrl, secretKey, instructions) {
