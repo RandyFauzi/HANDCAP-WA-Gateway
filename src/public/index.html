@@ -2664,6 +2664,19 @@ print(response.json())`;
       document.getElementById('mcp-allowed-numbers-container').style.display = isChecked ? 'block' : 'none';
     }
 
+    function addMcpAllowedNumberRow(value = '') {
+      const container = document.getElementById('mcp-allowed-numbers-list');
+      const row = document.createElement('div');
+      row.style.display = 'flex';
+      row.style.gap = '0.5rem';
+      row.style.alignItems = 'center';
+      row.innerHTML = `
+        <input type="text" class="mcp-allowed-number-input" placeholder="Misal: 628123456789" value="${escapeHtml(value)}" style="flex-grow: 1; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; font-family: monospace; font-size: 0.9rem;">
+        <button type="button" class="btn-secondary" onclick="this.parentElement.remove()" style="padding: 0.5rem 0.8rem; font-size: 0.8rem; border-radius: 4px; color: var(--danger); border-color: var(--danger); cursor: pointer;">X</button>
+      `;
+      container.appendChild(row);
+    }
+
     function openAddMcpModal() {
       document.getElementById('mcp-modal-title').innerText = 'Daftarkan Proyek MCP';
       document.getElementById('mcp-id').value = '';
@@ -2673,7 +2686,8 @@ print(response.json())`;
       document.getElementById('mcp-instructions').value = '';
       document.getElementById('mcp-active').checked = true;
       document.getElementById('mcp-restrict-access').checked = false;
-      document.getElementById('mcp-allowed-numbers').value = '';
+      document.getElementById('mcp-allowed-numbers-list').innerHTML = '';
+      addMcpAllowedNumberRow('');
       toggleMcpAllowedNumbers();
       document.getElementById('mcp-modal').classList.add('active');
     }
@@ -2697,12 +2711,15 @@ print(response.json())`;
       document.getElementById('mcp-url').value = mcpUrl;
       document.getElementById('mcp-secret-key').value = secretKey;
       document.getElementById('mcp-instructions').value = instructions;
+      
+      document.getElementById('mcp-allowed-numbers-list').innerHTML = '';
       if (allowedNumbers && allowedNumbers.trim() !== '') {
         document.getElementById('mcp-restrict-access').checked = true;
-        document.getElementById('mcp-allowed-numbers').value = allowedNumbers;
+        const numbers = allowedNumbers.split(',');
+        numbers.forEach(n => addMcpAllowedNumberRow(n.trim()));
       } else {
         document.getElementById('mcp-restrict-access').checked = false;
-        document.getElementById('mcp-allowed-numbers').value = '';
+        addMcpAllowedNumberRow('');
       }
       toggleMcpAllowedNumbers();
       document.getElementById('mcp-active').checked = isActive === 1;
@@ -2721,7 +2738,13 @@ print(response.json())`;
       const systemInstructions = document.getElementById('mcp-instructions').value.trim();
       const isActive = document.getElementById('mcp-active').checked;
       const isRestricted = document.getElementById('mcp-restrict-access').checked;
-      const allowedNumbers = isRestricted ? document.getElementById('mcp-allowed-numbers').value.trim() : null;
+      
+      let allowedNumbers = null;
+      if (isRestricted) {
+        const inputs = document.querySelectorAll('.mcp-allowed-number-input');
+        const vals = Array.from(inputs).map(inp => inp.value.trim()).filter(v => v !== '');
+        allowedNumbers = vals.length > 0 ? vals.join(',') : null;
+      }
 
       if (!projectName || !mcpUrl || !secretKey) {
         showToast('Error', 'Nama Proyek, URL, dan Secret Key wajib diisi.', 'danger');

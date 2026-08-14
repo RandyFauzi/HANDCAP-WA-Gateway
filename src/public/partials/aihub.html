@@ -71,8 +71,13 @@
           <label for="mcp-restrict-access" style="font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; color: var(--text-title);">Batasi Akses Pengguna (Whitelist Admin)</label>
         </div>
         <div id="mcp-allowed-numbers-container" style="display: none;">
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Masukkan daftar nomor WhatsApp Admin yang berhak memakai alat ini. Pisahkan dengan koma.</p>
-          <textarea id="mcp-allowed-numbers" rows="2" placeholder="Contoh: 628123456789, 628987654321" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; resize: vertical; font-family: monospace; font-size: 0.9rem;"></textarea>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Daftar nomor WhatsApp Admin yang berhak memakai alat ini.</p>
+          <div id="mcp-allowed-numbers-list" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.5rem;">
+            <!-- Dynamic input rows will be appended here via JS -->
+          </div>
+          <button type="button" class="btn-secondary" onclick="addMcpAllowedNumberRow('')" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.25rem;">
+            + Tambah Nomor
+          </button>
         </div>
       </div>
 
