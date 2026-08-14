@@ -27,7 +27,15 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
 
     // Role-Based Access Control (Whitelist Admin)
     if (mcp.allowed_numbers && mcp.allowed_numbers.trim() !== '') {
-      const allowedArray = mcp.allowed_numbers.split(',').map(n => n.trim().replace(/[^0-9]/g, ''));
+      const allowedArray = mcp.allowed_numbers.split(',').map(n => {
+        let clean = n.trim().replace(/[^0-9]/g, '');
+        // Standardize Indonesian numbers: replace leading 0 with 62
+        if (clean.startsWith('0')) {
+          clean = '62' + clean.substring(1);
+        }
+        return clean;
+      });
+      
       const sanitizedPhone = phone.replace(/[^0-9]/g, '');
       
       if (!allowedArray.includes(sanitizedPhone)) {
