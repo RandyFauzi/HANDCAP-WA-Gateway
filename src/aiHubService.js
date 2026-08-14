@@ -43,8 +43,8 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
       
       if (!allowedArray.includes(sanitizedPhone)) {
         console.log(`[AI Hub] Access DENIED for phone ${phone} (sanitized: ${sanitizedPhone}) to project ${mcp.project_name}. Allowed: ${allowedArray.join(', ')}`);
-        // Kita juga tambahkan konteks ke prompt agar AI tahu bahwa proyek ini diblokir untuk user tersebut
-        systemInstruction += `\n\n[INFO SISTEM] Akses ke proyek ${mcp.project_name} DITOLAK untuk nomor ${phone}. Anda tidak memiliki alat untuk proyek ini. Jawab dengan sopan bahwa fitur tersebut khusus Admin.`;
+        // Kita paksa AI untuk memberitahu user apa ID mereka yang sebenarnya terbaca oleh sistem
+        systemInstruction += `\n\n[INFO SISTEM] Akses ke proyek ${mcp.project_name} DITOLAK. Beritahu pengguna kalimat ini persis: "Maaf Kak, akses ditolak. Sistem membaca ID Kakak sebagai: *${sanitizedPhone}*. Tolong masukkan angka tersebut persis ke dalam Whitelist Admin."`;
         continue; // Skip loading tools from this MCP
       } else {
         console.log(`[AI Hub] Access GRANTED for phone ${phone} to project ${mcp.project_name}.`);
