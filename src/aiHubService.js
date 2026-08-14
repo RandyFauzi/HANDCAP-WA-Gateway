@@ -219,7 +219,19 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
     }
   } catch (err) {
     console.error(`[AI Hub] Fatal error from Gemini API:`, err.message);
-    const errorMsg = `[Sistem HANDCAP] Maaf, otak AI gagal merespons. Kendala: ${err.message}`;
+    
+    let errorMsg = `[Sistem HANDCAP] Maaf, otak AI gagal merespons. Kendala: ${err.message}`;
+    
+    // Trik UX: Terjemahkan error limit (429) menjadi bahasa manusia agar user tidak bingung
+    if (err.message && err.message.includes('429 Too Many Requests')) {
+      let waitTime = 'beberapa';
+      const match = err.message.match(/retry in ([\d\.]+)s/);
+      if (match && match[1]) {
+        waitTime = Math.ceil(parseFloat(match[1])); // Bulatkan detik ke atas
+      }
+      errorMsg = `⏳ *AI Sedang Sibuk / Limit* ⏳\n\nMaaf Kak, antrean sistem AI sedang padat (batas harian/menit tercapai). Mohon jeda sejenak dan coba *chat* lagi dalam *${waitTime} detik* ya! 🙏`;
+    }
+
     const fallbackJid = replyJid || `${phone}@s.whatsapp.net`;
     await socket.sendMessage(fallbackJid, { text: errorMsg });
     return;
