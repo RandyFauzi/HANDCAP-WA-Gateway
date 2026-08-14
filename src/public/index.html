@@ -2634,8 +2634,8 @@ print(response.json())`;
               const tr = document.createElement('tr');
               
               const activeBadge = m.is_active === 1
-                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}')">Aktif</span>`
-                : `<span class="badge badge-danger" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}')">Nonaktif</span>`;
+                ? `<span class="badge badge-success" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'))">Aktif</span>`
+                : `<span class="badge badge-danger" style="cursor:pointer;" onclick="toggleMcpActiveStatus(${m.id}, ${m.is_active}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'))">Nonaktif</span>`;
 
               tr.innerHTML = `
                 <td style="font-weight:600; padding:1rem;">${escapeHtml(m.project_name)}</td>
@@ -2644,7 +2644,7 @@ print(response.json())`;
                 <td style="padding:1rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(m.system_instructions || '-')}</td>
                 <td style="padding:1rem;">${activeBadge}</td>
                 <td style="padding:1rem;">
-                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; margin-right: 0.25rem;" onclick="openEditMcpModal(${m.id}, '${escapeHtml(m.project_name)}', '${escapeHtml(m.mcp_url)}', '${escapeHtml(m.secret_key)}', '${escapeHtml(m.system_instructions || '')}', ${m.is_active})">Edit</button>
+                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; margin-right: 0.25rem;" onclick="openEditMcpModal(${m.id}, decodeURIComponent('${encodeURIComponent(m.project_name)}'), decodeURIComponent('${encodeURIComponent(m.mcp_url)}'), decodeURIComponent('${encodeURIComponent(m.secret_key)}'), decodeURIComponent('${encodeURIComponent(m.system_instructions || '')}'), ${m.is_active})">Edit</button>
                   <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; color: var(--danger); border-color: var(--danger);" onclick="deleteMcpRegistry(${m.id})">Hapus</button>
                 </td>
               `;

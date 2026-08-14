@@ -11,7 +11,7 @@ Dokumen ini berisi dokumentasi teknis menyeluruh tentang arsitektur, struktur di
     *   **Runtime**: Node.js (Express.js)
     *   **WhatsApp Engine**: `@whiskeysockets/baileys` (Pustaka Web WhatsApp berbasis WebSocket)
     *   **Real-time Communication**: `socket.io` (Sinkronisasi status dan progres secara real-time)
-    *   **Database**: MySQL (dengan **In-Memory Fallback Registry** jika DB luring/mati)
+    *   **Database**: MySQL (Strict Mode, wajib terhubung ke database)
     *   **Frontend**: Vanilla HTML5, CSS3 (Premium White & Blue palette), dan Vanilla JS (asynchronous partial loaders)
 
 ---
@@ -22,8 +22,9 @@ Dokumen ini berisi dokumentasi teknis menyeluruh tentang arsitektur, struktur di
 HANDCAP/
 ├── sessions/               # Kredensial WhatsApp per sesi (kunci enkripsi, sesi Baileys)
 ├── src/
-│   ├── db.js               # Manajemen DB (Postgres & Fallback Array)
+│   ├── db.js               # Manajemen DB (MySQL, Strict Mode)
 │   ├── index.js            # Entry point utama (Server HTTP & WebSocket)
+│   ├── aiHubService.js     # Integrasi Gemini AI & MCP (Model Context Protocol)
 │   ├── sessionManager.js   # Lifecycle WhatsApp, Autoload Sesi, & Antrean Anti-Ban
 │   ├── public/             # Folder aset statis (Frontend)
 │   │   ├── index.html      # Kerangka utama dashboard
@@ -55,19 +56,18 @@ graph TD
     Queue -->|Simulate Typing| WhatsAppSocket[Baileys WASocket]
     WhatsAppSocket -->|WhatsApp Protocol| WhatsAppServers[Meta WhatsApp Servers]
     WhatsAppServers -->|Incoming messages.upsert| Backend
-    Backend -->|Save Message| Database[(MySQL / In-Memory Fallback)]
+    Backend -->|Save Message| Database[(MySQL)]
+    Backend <-->|AI Hub / MCP| Gemini[Google Gemini AI]
+    Gemini <-->|Dynamic Tools| MCP[MCP Servers]
 ```
 
 ---
 
 ## 4. Analisis Modul Kode (Core Modules)
 
-### A. `src/db.js` (Database & Fallback Layer)
+### A. `src/db.js` (Database & Strict Mode)
 *   **Fungsi**: Bertanggung jawab menyimpan log pesan keluar, histori pesan Live Chat (`chat_messages`), dan log kampanye broadcast (`campaigns` & `campaign_recipients`).
-*   **In-Memory Fallback**: Jika koneksi MySQL gagal, data akan dialihkan secara otomatis ke array memori:
-    *   `memoryCampaigns`: Menyimpan metadata kampanye broadcast.
-    *   `memoryRecipients`: Menyimpan status pengiriman tiap kontak tujuan kampanye.
-    *   `memoryChatMessages`: Menyimpan histori chat masuk dan keluar.
+*   **Strict Database Mode**: Sistem mewajibkan koneksi MySQL yang aktif (fallback in-memory telah dihapus). Jika koneksi database terputus atau gagal, sistem akan menampilkan halaman error *Debug Mode* pada frontend untuk mencegah inkonsistensi data.
 *   **Metode Utama**:
     *   `saveChatMessage(sessionId, msgId, phone, message, fromMe)`: Menyimpan riwayat chat (dilengkapi `ON CONFLICT (msg_id) DO NOTHING` untuk mencegah duplikasi).
     *   `getChats(sessionId)`: Mengambil daftar kontak unik yang memiliki riwayat chat dengan sesi tertentu, diurutkan dari chat terbaru.
@@ -90,14 +90,18 @@ graph TD
     4.  **Cool-down Delay**: Setelah pesan terkirim, jika masih ada antrean berikutnya, sistem akan tertidur (*sleep*) selama jeda waktu acak **3 - 6 detik** sebelum mengirim pesan selanjutnya agar tidak terdeteksi sebagai spam oleh Meta.
 *   **Penyelesaian Duplikasi JID (LID vs PN)**:
     WhatsApp memigrasikan akun ke sistem **LID (Linked Identity)**. Akibatnya, balasan dari HP kadangkala masuk menggunakan ID unik `@lid` (seperti `169999117340830`).
-    Sistem di `messages.upsert` mengantisipasi ini dengan mendeteksi properti `remoteJidAlt` (nomor telepon asli pengirim) jika tersedia:
-    ```javascript
-    const targetJid = msg.key.remoteJidAlt || msg.key.remoteJid;
-    const phone = targetJid.split('@')[0];
-    ```
-    Hal ini memastikan seluruh pesan (baik PN maupun LID) selalu terpusat pada satu thread obrolan yang sama berdasarkan nomor asli pengirim.
+    Sistem mengantisipasi ini dengan *Smart LID detection* untuk mendeteksi `remoteJidAlt` (nomor asli). Hal ini diterapkan secara ketat baik di `sessionManager` maupun `aiHubService` agar setiap balasan bot AI maupun broadcast selalu tepat sasaran ke nomor asli pengirim.
 
-### C. `src/routes/api.js` (REST API Gateway)
+### C. `src/aiHubService.js` (AI Hub & MCP Integration)
+*   **Fungsi**: Mengelola interaksi dengan Google Gemini AI dan merutekan pemanggilan fungsi dinamis melalui protokol MCP (Model Context Protocol).
+*   **Alur Kerja**:
+    1.  **Pendaftaran Alat**: Mengambil daftar server MCP aktif dari database (`getMcpRegistries`).
+    2.  **Penemuan Alat**: Memanggil `tools/list` pada setiap server MCP untuk mendapatkan fungsi-fungsi kustom yang tersedia.
+    3.  **Generasi AI**: Menyerahkan riwayat percakapan dan alat-alat (tools) tersebut ke model Gemini (`gemini-2.5-flash`).
+    4.  **Eksekusi Fungsi**: Jika AI merespons dengan pemanggilan fungsi (*function call*), sistem akan meneruskan request (`tools/call`) ke server MCP yang bersangkutan.
+    5.  **Balasan Pintar**: Hasil dari MCP dikembalikan ke AI untuk diolah menjadi teks, lalu dikirim ke pengguna WhatsApp tujuan (menggunakan JID asli).
+
+### D. `src/routes/api.js` (REST API Gateway)
 *   **Fungsi**: Menyediakan pintu gerbang terautentikasi untuk aplikasi luar menggunakan otentikasi **Bearer Token** (`Authorization: Bearer <API_KEY>`).
 *   **Endpoints Utama**:
     *   `POST /api/v1/send-message`: Mengirimkan satu pesan WhatsApp (dimasukkan ke antrean Anti-Ban terlebih dahulu).
@@ -105,7 +109,7 @@ graph TD
     *   `GET /api/v1/chats`: Mendapatkan riwayat daftar thread obrolan aktif.
     *   `GET /api/v1/chats/:phone/messages`: Mendapatkan pesan obrolan secara detail dengan nomor tertentu.
 
-### D. `src/public/index.html` & Partials (Frontend Layout)
+### E. `src/public/index.html` & Partials (Frontend Layout)
 *   **Fungsi**: Dashboard interaktif yang mengontrol sistem.
 *   **Variabel State di Browser**:
     *   `activeSessionsList` (Array): Daftar seluruh sesi terdaftar di server beserta status koneksinya.
@@ -141,4 +145,4 @@ SESSION_DIR=./sessions
 ## 6. Petunjuk Penting Bagi AI (Developer Instruction)
 *   **Selalu Prioritaskan Anti-Ban Queue**: Jangan pernah mengirim pesan langsung tanpa melalui `sessionManager.sendMessage()` karena metode tersebut yang mengelola antrean jeda acak dan simulasi mengetik.
 *   **Modifikasi Frontend**: Jika Anda mengubah tampilan layout pada halaman tertentu, edit file-file partial di dalam direktori `src/public/partials/` terlebih dahulu. `index.html` hanya berfungsi sebagai cangkang pemanggil (*shell layout*).
-*   **Manajemen Database Fallback**: Bila ada penambahan tabel atau query baru di `db.js`, Anda **wajib** menulis fungsi fallback in-memory yang sepadan agar sistem dapat terus berjalan normal meskipun server MySQL tidak terpasang di komputer pengguna.
+*   **Integrasi MCP Baru**: Jika ada endpoint fungsi MCP baru, pastikan didaftarkan pada tabel MCP registry dan URL dapat diakses oleh server. Selalu tangani kondisi error dari MCP/Gemini dengan aman (*graceful fallback*) agar bot tetap memberikan balasan kepada pengguna.

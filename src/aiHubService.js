@@ -116,6 +116,15 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
     // 5. Handle Function Calls (The Spoke Bridge)
     let functionCalls = typeof response.functionCalls === 'function' ? response.functionCalls() : response.functionCalls;
     while (functionCalls && functionCalls.length > 0) {
+      // Send intermediate text if Gemini provides a conversational response alongside the function call
+      try {
+        let intermediateText = typeof response.text === 'function' ? response.text() : '';
+        if (intermediateText) {
+          const jid = replyJid || `${phone}@s.whatsapp.net`;
+          await socket.sendMessage(jid, { text: intermediateText });
+        }
+      } catch (e) {}
+
       const call = functionCalls[0];
       console.log(`[AI Hub] Gemini requested function call: ${call.name} with args:`, call.args);
 
@@ -156,7 +165,7 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
           ...contents,
           {
             role: 'model',
-            parts: [response.candidates[0].content.parts[0]]
+            parts: response.candidates[0].content.parts
           },
           {
             role: 'user',
@@ -176,7 +185,7 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
   } catch (err) {
     console.error(`[AI Hub] Fatal error from Gemini API:`, err.message);
     const errorMsg = `[Sistem HANDCAP] Maaf, otak AI gagal merespons. Kendala: ${err.message}`;
-    const jid = `${phone}@s.whatsapp.net`;
+    const jid = replyJid || `${phone}@s.whatsapp.net`;
     await socket.sendMessage(jid, { text: errorMsg });
     return;
   }
