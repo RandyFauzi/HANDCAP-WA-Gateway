@@ -107,6 +107,12 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
   let result;
   let response;
   try {
+    const currentJid = replyJid || `${phone}@s.whatsapp.net`;
+    // Munculkan efek "Mengetik..." (typing) di WA pengguna agar natural
+    try {
+      await socket.sendPresenceUpdate('composing', currentJid);
+    } catch (e) {}
+
     console.log(`[AI Hub] Invoking Gemini model for ${phone}...`);
     result = await model.generateContent({
       contents
@@ -118,12 +124,10 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
     while (functionCalls && functionCalls.length > 0) {
       // Teks sementara (intermediate text) yang dihasilkan Gemini saat memanggil alat 
       // tidak lagi kita kirim ke WhatsApp agar balasan langsung "to the point" (tidak spam).
+      
+      // Refresh efek "Mengetik..." agar tidak hilang jika fungsi berjalan lama
       try {
-        let intermediateText = typeof response.text === 'function' ? response.text() : '';
-        // if (intermediateText) {
-        //   const jid = replyJid || `${phone}@s.whatsapp.net`;
-        //   await socket.sendMessage(jid, { text: intermediateText });
-        // }
+        await socket.sendPresenceUpdate('composing', currentJid);
       } catch (e) {}
 
       const call = functionCalls[0];
@@ -159,10 +163,14 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
       }
 
       console.log(`[AI Hub] Sending tool result back to Gemini:`, toolResult);
-      
-      // Feed the function execution result back to the model
-      result = await model.generateContent({
-        contents: [
+            // Refresh efek "Mengetik..." setelah memanggil alat, saat AI mensintesis jawaban final
+        try {
+          await socket.sendPresenceUpdate('composing', currentJid);
+        } catch (e) {}
+
+        // Feed the function execution result back to the model
+        result = await model.generateContent({
+          contents: [
           ...contents,
           {
             role: 'model',
@@ -186,8 +194,8 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
   } catch (err) {
     console.error(`[AI Hub] Fatal error from Gemini API:`, err.message);
     const errorMsg = `[Sistem HANDCAP] Maaf, otak AI gagal merespons. Kendala: ${err.message}`;
-    const jid = replyJid || `${phone}@s.whatsapp.net`;
-    await socket.sendMessage(jid, { text: errorMsg });
+    const fallbackJid = replyJid || `${phone}@s.whatsapp.net`;
+    await socket.sendMessage(fallbackJid, { text: errorMsg });
     return;
   }
 
@@ -205,11 +213,17 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
 
   console.log(`[AI Hub] Sending final AI response to ${phone}: ${finalReply}`);
 
+  // Hentikan efek "Mengetik..." sebelum mengirim pesan final (opsional, tapi baik untuk clean-up)
+  try {
+    const finalJid = replyJid || `${phone}@s.whatsapp.net`;
+    await socket.sendPresenceUpdate('paused', finalJid);
+  } catch (e) {}
+
   // 6. Send response via WhatsApp socket
   // Use the original JID from the incoming message (avoids LID JID issues like 169999xxx)
-  const jid = replyJid || `${phone}@s.whatsapp.net`;
-  console.log(`[AI Hub] Sending reply to JID: ${jid}`);
-  await socket.sendMessage(jid, { text: finalReply });
+  const finalDestJid = replyJid || `${phone}@s.whatsapp.net`;
+  console.log(`[AI Hub] Sending reply to JID: ${finalDestJid}`);
+  await socket.sendMessage(finalDestJid, { text: finalReply });
 
   // Save the outgoing AI reply to database
   const msgId = 'AI_' + Date.now();
