@@ -116,13 +116,14 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
     // 5. Handle Function Calls (The Spoke Bridge)
     let functionCalls = typeof response.functionCalls === 'function' ? response.functionCalls() : response.functionCalls;
     while (functionCalls && functionCalls.length > 0) {
-      // Send intermediate text if Gemini provides a conversational response alongside the function call
+      // Teks sementara (intermediate text) yang dihasilkan Gemini saat memanggil alat 
+      // tidak lagi kita kirim ke WhatsApp agar balasan langsung "to the point" (tidak spam).
       try {
         let intermediateText = typeof response.text === 'function' ? response.text() : '';
-        if (intermediateText) {
-          const jid = replyJid || `${phone}@s.whatsapp.net`;
-          await socket.sendMessage(jid, { text: intermediateText });
-        }
+        // if (intermediateText) {
+        //   const jid = replyJid || `${phone}@s.whatsapp.net`;
+        //   await socket.sendMessage(jid, { text: intermediateText });
+        // }
       } catch (e) {}
 
       const call = functionCalls[0];
