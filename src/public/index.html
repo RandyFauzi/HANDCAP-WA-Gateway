@@ -2634,8 +2634,8 @@ print(response.json())`;
               const tr = document.createElement('tr');
               
               const activeBadge = m.is_active === 1
-                ? `<span class="badge badge-success" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Aktif</span>`
-                : `<span class="badge badge-danger" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Nonaktif</span>`;
+                ? `<span class="badge badge-success" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" data-allowed="${escapeHtml(m.allowed_numbers || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Aktif</span>`
+                : `<span class="badge badge-danger" style="cursor:pointer;" data-id="${m.id}" data-active="${m.is_active}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" data-allowed="${escapeHtml(m.allowed_numbers || '')}" onclick="toggleMcpActiveStatusFromBtn(this)">Nonaktif</span>`;
 
               tr.innerHTML = `
                 <td style="font-weight:600; padding:1rem;">${escapeHtml(m.project_name)}</td>
@@ -2644,7 +2644,7 @@ print(response.json())`;
                 <td style="padding:1rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(m.system_instructions || '-')}</td>
                 <td style="padding:1rem;">${activeBadge}</td>
                 <td style="padding:1rem; text-align:right; display: flex; gap: 0.5rem; justify-content: flex-end;">
-                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px;" data-id="${m.id}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" data-active="${m.is_active}" onclick="openEditMcpModalFromBtn(this)">Edit</button>
+                  <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px;" data-id="${m.id}" data-project="${escapeHtml(m.project_name)}" data-url="${escapeHtml(m.mcp_url)}" data-key="${escapeHtml(m.secret_key)}" data-instructions="${escapeHtml(m.system_instructions || '')}" data-allowed="${escapeHtml(m.allowed_numbers || '')}" data-active="${m.is_active}" onclick="openEditMcpModalFromBtn(this)">Edit</button>
                   <button class="btn-secondary" style="padding: 0.35rem 0.7rem; font-size: 0.75rem; border-radius: 4px; color: var(--danger); border-color: var(--danger);" onclick="deleteMcpRegistry(${m.id})">Hapus</button>
                 </td>
               `;
@@ -2659,6 +2659,11 @@ print(response.json())`;
       }
     }
 
+    function toggleMcpAllowedNumbers() {
+      const isChecked = document.getElementById('mcp-restrict-access').checked;
+      document.getElementById('mcp-allowed-numbers-container').style.display = isChecked ? 'block' : 'none';
+    }
+
     function openAddMcpModal() {
       document.getElementById('mcp-modal-title').innerText = 'Daftarkan Proyek MCP';
       document.getElementById('mcp-id').value = '';
@@ -2667,6 +2672,9 @@ print(response.json())`;
       document.getElementById('mcp-secret-key').value = '';
       document.getElementById('mcp-instructions').value = '';
       document.getElementById('mcp-active').checked = true;
+      document.getElementById('mcp-restrict-access').checked = false;
+      document.getElementById('mcp-allowed-numbers').value = '';
+      toggleMcpAllowedNumbers();
       document.getElementById('mcp-modal').classList.add('active');
     }
 
@@ -2677,17 +2685,26 @@ print(response.json())`;
         btn.getAttribute('data-url'),
         btn.getAttribute('data-key'),
         btn.getAttribute('data-instructions'),
+        btn.getAttribute('data-allowed'),
         parseInt(btn.getAttribute('data-active'))
       );
     }
 
-    function openEditMcpModal(id, projectName, mcpUrl, secretKey, instructions, isActive) {
+    function openEditMcpModal(id, projectName, mcpUrl, secretKey, instructions, allowedNumbers, isActive) {
       document.getElementById('mcp-modal-title').innerText = 'Edit Registrasi Proyek MCP';
       document.getElementById('mcp-id').value = id;
       document.getElementById('mcp-project-name').value = projectName;
       document.getElementById('mcp-url').value = mcpUrl;
       document.getElementById('mcp-secret-key').value = secretKey;
       document.getElementById('mcp-instructions').value = instructions;
+      if (allowedNumbers && allowedNumbers.trim() !== '') {
+        document.getElementById('mcp-restrict-access').checked = true;
+        document.getElementById('mcp-allowed-numbers').value = allowedNumbers;
+      } else {
+        document.getElementById('mcp-restrict-access').checked = false;
+        document.getElementById('mcp-allowed-numbers').value = '';
+      }
+      toggleMcpAllowedNumbers();
       document.getElementById('mcp-active').checked = isActive === 1;
       document.getElementById('mcp-modal').classList.add('active');
     }
@@ -2703,9 +2720,11 @@ print(response.json())`;
       const secretKey = document.getElementById('mcp-secret-key').value.trim();
       const systemInstructions = document.getElementById('mcp-instructions').value.trim();
       const isActive = document.getElementById('mcp-active').checked;
+      const isRestricted = document.getElementById('mcp-restrict-access').checked;
+      const allowedNumbers = isRestricted ? document.getElementById('mcp-allowed-numbers').value.trim() : null;
 
       if (!projectName || !mcpUrl || !secretKey) {
-        showToast('Validasi Gagal', 'Semua field wajib diisi kecuali instruksi tambahan.', 'warning');
+        showToast('Error', 'Nama Proyek, URL, dan Secret Key wajib diisi.', 'danger');
         return;
       }
 
@@ -2717,7 +2736,8 @@ print(response.json())`;
         mcpUrl,
         secretKey,
         systemInstructions,
-        isActive
+        isActive,
+        allowedNumbers
       };
 
       try {
@@ -2747,11 +2767,12 @@ print(response.json())`;
         btn.getAttribute('data-project'),
         btn.getAttribute('data-url'),
         btn.getAttribute('data-key'),
-        btn.getAttribute('data-instructions')
+        btn.getAttribute('data-instructions'),
+        btn.getAttribute('data-allowed')
       );
     }
 
-    async function toggleMcpActiveStatus(id, currentStatus, projectName, mcpUrl, secretKey, instructions) {
+    async function toggleMcpActiveStatus(id, currentStatus, projectName, mcpUrl, secretKey, instructions, allowedNumbers) {
       const newStatus = currentStatus === 1 ? 0 : 1;
       try {
         const response = await apiFetch(`/api/v1/mcp/${id}`, {
@@ -2762,6 +2783,7 @@ print(response.json())`;
             mcpUrl,
             secretKey,
             systemInstructions: instructions,
+            allowedNumbers: allowedNumbers,
             isActive: newStatus === 1
           })
         });

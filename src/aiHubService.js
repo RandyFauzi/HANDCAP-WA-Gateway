@@ -24,6 +24,21 @@ async function handleIncomingMessage(sessionId, phone, incomingText, socket, io,
   // 2. Fetch and register tools from each active MCP client dynamically
   for (const mcp of enabledMcps) {
     console.log(`[AI Hub] Fetching dynamic tools from project: ${mcp.project_name} (${mcp.mcp_url})`);
+
+    // Role-Based Access Control (Whitelist Admin)
+    if (mcp.allowed_numbers && mcp.allowed_numbers.trim() !== '') {
+      const allowedArray = mcp.allowed_numbers.split(',').map(n => n.trim().replace(/[^0-9]/g, ''));
+      const sanitizedPhone = phone.replace(/[^0-9]/g, '');
+      
+      if (!allowedArray.includes(sanitizedPhone)) {
+        console.log(`[AI Hub] Access DENIED for phone ${phone} to project ${mcp.project_name}. Skipping tools.`);
+        // Kita juga tambahkan konteks ke prompt agar AI tahu bahwa proyek ini diblokir untuk user tersebut
+        systemInstruction += `\n\n[INFO SISTEM] Akses ke proyek ${mcp.project_name} DITOLAK untuk nomor ${phone}. Anda tidak memiliki alat untuk proyek ini. Jawab dengan sopan bahwa fitur tersebut khusus Admin.`;
+        continue; // Skip loading tools from this MCP
+      } else {
+        console.log(`[AI Hub] Access GRANTED for phone ${phone} to project ${mcp.project_name}.`);
+      }
+    }
     
     // Add custom instructions if defined
     if (mcp.system_instructions) {

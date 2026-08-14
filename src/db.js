@@ -149,12 +149,24 @@ async function connectDb() {
           mcp_url VARCHAR(255) NOT NULL,
           secret_key VARCHAR(255) NOT NULL,
           system_instructions TEXT,
+          allowed_numbers TEXT NULL,
           is_active TINYINT(1) NOT NULL DEFAULT 1,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
           deleted_at TIMESTAMP NULL DEFAULT NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      // Migration: Add allowed_numbers column to mcp_registry
+      try {
+        const [mcpCols] = await pool.query("SHOW COLUMNS FROM mcp_registry LIKE 'allowed_numbers'");
+        if (mcpCols.length === 0) {
+          await pool.query("ALTER TABLE mcp_registry ADD COLUMN allowed_numbers TEXT NULL AFTER system_instructions");
+          console.log("Migration: Added allowed_numbers column to mcp_registry table.");
+        }
+      } catch (err) {
+        console.warn("Migration warning: failed to check/add allowed_numbers column:", err.message);
+      }
 
       console.log('Database tables initialized (users, api_keys, sent_messages, campaigns, campaign_recipients, chat_messages, mcp_registry).');
 
@@ -657,7 +669,7 @@ async function getMcpRegistries() {
   if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [rows] = await pool.query(
-      'SELECT id, project_name, mcp_url, secret_key, system_instructions, is_active, created_at, updated_at FROM mcp_registry WHERE deleted_at IS NULL ORDER BY created_at DESC'
+      'SELECT id, project_name, mcp_url, secret_key, system_instructions, allowed_numbers, is_active, created_at, updated_at FROM mcp_registry WHERE deleted_at IS NULL ORDER BY created_at DESC'
     );
     return rows;
   } catch (err) {
@@ -666,12 +678,12 @@ async function getMcpRegistries() {
   }
 }
 
-async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions = '') {
+async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions = '', allowedNumbers = null) {
   if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     await pool.query(
-      'INSERT INTO mcp_registry (project_name, mcp_url, secret_key, system_instructions) VALUES (?, ?, ?, ?)',
-      [projectName, mcpUrl, secretKey, systemInstructions]
+      'INSERT INTO mcp_registry (project_name, mcp_url, secret_key, system_instructions, allowed_numbers) VALUES (?, ?, ?, ?, ?)',
+      [projectName, mcpUrl, secretKey, systemInstructions, allowedNumbers]
     );
     const [rows] = await pool.query(
       'SELECT * FROM mcp_registry WHERE project_name = ? AND mcp_url = ? ORDER BY id DESC LIMIT 1',
@@ -684,14 +696,14 @@ async function createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructi
   }
 }
 
-async function updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive) {
+async function updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive, allowedNumbers = null) {
   const rid = parseInt(id);
   const activeStatus = isActive ? 1 : 0;
   if (!pool || !isConnected) throw new Error("Database not connected.");
   try {
     const [res] = await pool.query(
-      'UPDATE mcp_registry SET project_name = ?, mcp_url = ?, secret_key = ?, system_instructions = ?, is_active = ? WHERE id = ?',
-      [projectName, mcpUrl, secretKey, systemInstructions, activeStatus, rid]
+      'UPDATE mcp_registry SET project_name = ?, mcp_url = ?, secret_key = ?, system_instructions = ?, allowed_numbers = ?, is_active = ? WHERE id = ?',
+      [projectName, mcpUrl, secretKey, systemInstructions, allowedNumbers, activeStatus, rid]
     );
     return res.affectedRows > 0;
   } catch (err) {

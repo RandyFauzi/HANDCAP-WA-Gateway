@@ -65,6 +65,17 @@
         <textarea id="mcp-instructions" rows="4" placeholder="Tuliskan instruksi bahasa, kepribadian, atau panduan SOP untuk AI saat merespon project ini..." style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; resize: vertical; font-family: inherit; font-size: 0.9rem;"></textarea>
       </div>
 
+      <div class="form-group" style="margin-bottom: 1.25rem; border-top: 1px solid var(--border-color); padding-top: 1rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+          <input type="checkbox" id="mcp-restrict-access" onchange="toggleMcpAllowedNumbers()" style="width: 16px; height: 16px; cursor: pointer;">
+          <label for="mcp-restrict-access" style="font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; color: var(--text-title);">Batasi Akses Pengguna (Whitelist Admin)</label>
+        </div>
+        <div id="mcp-allowed-numbers-container" style="display: none;">
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.5rem;">Masukkan daftar nomor WhatsApp Admin yang berhak memakai alat ini. Pisahkan dengan koma.</p>
+          <textarea id="mcp-allowed-numbers" rows="2" placeholder="Contoh: 628123456789, 628987654321" style="width: 100%; padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.7); outline: none; resize: vertical; font-family: monospace; font-size: 0.9rem;"></textarea>
+        </div>
+      </div>
+
       <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1.5rem;">
         <input type="checkbox" id="mcp-active" style="width: 16px; height: 16px; cursor: pointer;">
         <label for="mcp-active" style="font-size: 0.85rem; font-weight: 600; cursor: pointer; user-select: none; color: var(--text-muted);">Aktifkan Proyek</label>

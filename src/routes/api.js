@@ -1001,7 +1001,7 @@ router.get('/mcp', authenticate, async (req, res) => {
  * Register a new MCP client website
  */
 router.post('/mcp', authenticate, async (req, res) => {
-  const { projectName, mcpUrl, secretKey, systemInstructions } = req.body;
+  const { projectName, mcpUrl, secretKey, systemInstructions, allowedNumbers } = req.body;
   if (!projectName || !mcpUrl || !secretKey) {
     return res.status(400).json({
       status: 'error',
@@ -1010,7 +1010,7 @@ router.post('/mcp', authenticate, async (req, res) => {
   }
 
   try {
-    const newMcp = await db.createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions || '');
+    const newMcp = await db.createMcpRegistry(projectName, mcpUrl, secretKey, systemInstructions || '', allowedNumbers);
     return res.status(201).json({
       status: 'success',
       message: 'MCP server registered successfully.',
@@ -1030,7 +1030,7 @@ router.post('/mcp', authenticate, async (req, res) => {
  */
 router.put('/mcp/:id', authenticate, async (req, res) => {
   const { id } = req.params;
-  const { projectName, mcpUrl, secretKey, systemInstructions, isActive } = req.body;
+  const { projectName, mcpUrl, secretKey, systemInstructions, isActive, allowedNumbers } = req.body;
 
   if (!projectName || !mcpUrl || !secretKey) {
     return res.status(400).json({
@@ -1040,7 +1040,7 @@ router.put('/mcp/:id', authenticate, async (req, res) => {
   }
 
   try {
-    const success = await db.updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive);
+    const success = await db.updateMcpRegistry(id, projectName, mcpUrl, secretKey, systemInstructions, isActive, allowedNumbers);
     if (success) {
       return res.status(200).json({
         status: 'success',
